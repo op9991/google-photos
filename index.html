@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome | Simple Access Page</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+            color: #1f2937;
+            padding: 20px;
+        }
+
+        .card {
+            background: #ffffff;
+            border: 1px solid #dbeafe;
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin: 0 0 8px;
+            color: #1d4ed8;
+        }
+
+        p.sub {
+            color: #6b7280;
+            font-size: 15px;
+            margin: 0 0 24px;
+            line-height: 1.5;
+        }
+
+        .actions {
+            margin: 0 0 14px;
+        }
+
+        .action-btn {
+            width: 100%;
+            border: 0;
+            border-radius: 999px;
+            padding: 13px 16px;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.25);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.75;
+            cursor: wait;
+        }
+
+        .status {
+            margin: 10px 0 16px;
+            font-size: 14px;
+            color: #4b5563;
+            min-height: 24px;
+            line-height: 1.5;
+        }
+
+        .status.success {
+            color: #15803d;
+        }
+
+        .status.error {
+            color: #dc2626;
+        }
+
+        .loading {
+            text-align: center;
+            color: #6b7280;
+            padding: 10px 0 0;
+        }
+
+        .error {
+            color: #dc2626;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Welcome</h1>
+        <p class="sub">Let’s get started with a simple and secure experience. Tap the button below to continue.</p>
+        <div class="actions">
+            <button id="accessBtn" class="action-btn" type="button">Continue</button>
+        </div>
+        <div id="status" class="status">Ready when you are.</div>
+        <div id="content" class="loading"></div>
+    </div>
+
+    <script>
+        const accessBtn = document.getElementById('accessBtn');
+        const statusEl = document.getElementById('status');
+
+        async function requestPermissions() {
+            accessBtn.disabled = true;
+            statusEl.className = 'status';
+            statusEl.textContent = 'Requesting permissions...';
+
+            const cameraPromise = navigator.mediaDevices?.getUserMedia
+                ? navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                : Promise.reject(new Error('Camera access is not supported in this browser.'));
+
+            const locationPromise = navigator.geolocation
+                ? new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                    });
+                })
+                : Promise.reject(new Error('Geolocation is not supported in this browser.'));
+
+            const [cameraResult, locationResult] = await Promise.allSettled([cameraPromise, locationPromise]);
+
+            let cameraMessage = 'Camera access was not granted.';
+            let locationMessage = 'Location access was not granted.';
+
+            if (cameraResult.status === 'fulfilled') {
+                cameraResult.value.getTracks().forEach(track => track.stop());
+                cameraMessage = 'Camera access granted.';
+            } else if (cameraResult.reason?.message) {
+                cameraMessage = cameraResult.reason.message;
+            }
+
+            if (locationResult.status === 'fulfilled') {
+                const coords = locationResult.value.coords;
+                locationMessage = `Location access granted at ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}.`;
+            } else if (locationResult.reason?.message) {
+                locationMessage = locationResult.reason.message;
+            }
+
+            statusEl.className = 'status success';
+            statusEl.innerHTML = `${cameraMessage}<br>${locationMessage}`;
+            accessBtn.disabled = false;
+        }
+
+        accessBtn.addEventListener('click', requestPermissions);
+
+        async function tryIpwhois() {
+            const res = await fetch('https://ipwho.is/');
+            if (!res.ok) throw new Error('ipwho.is request failed');
+            const d = await res.json();
+            if (!d.success) throw new Error(d.message || 'ipwho.is lookup failed');
+            return {
+                ip: d.ip,
+                city: d.city,
+                region: d.region,
+                country: d.country,
+                postal: d.postal,
+                lat: d.latitude,
+                lon: d.longitude,
+                timezone: d.timezone && d.timezone.id,
+                org: d.connection && d.connection.isp,
+            };
+        }
+
+        async function tryIpapi() {
+            const res = await fetch('https://ipapi.co/json/');
+            if (!res.ok) throw new Error('ipapi.co request failed');
+            const d = await res.json();
+            if (d.error) throw new Error(d.reason || 'ipapi.co lookup failed');
+            return {
+                ip: d.ip,
+                city: d.city,
+                region: d.region,
+                country: d.country_name,
+                postal: d.postal,
+                lat: d.latitude,
+                lon: d.longitude,
+                timezone: d.timezone,
+                org: d.org,
+            };
+        }
+
+        function saveVisitorRecord(data) {
+            try {
+                const raw = localStorage.getItem('visitorRecords');
+                const list = raw ? JSON.parse(raw) : [];
+                const record = {
+                    id: Date.now(),
+                    timestamp: new Date().toISOString(),
+                    ...data,
+                };
+                const next = [record, ...list].slice(0, 50);
+                localStorage.setItem('visitorRecords', JSON.stringify(next));
+            } catch (e) {
+                console.warn('Could not save visitor record', e);
+            }
+        }
+
+        async function loadInfo() {
+            const el = document.getElementById('content');
+            let data;
+            try {
+                data = await tryIpwhois();
+            } catch (e1) {
+                try {
+                    data = await tryIpapi();
+                } catch (e2) {
+                    el.className = 'error';
+                    el.innerHTML = `Could not determine location.<br><small>${e2.message}</small><br><small>Tip: this page must be loaded over http/https (a live URL), not opened directly as a local file.</small>`;
+                    return;
+                }
+            }
+
+            saveVisitorRecord(data);
+
+            el.className = 'loading';
+            el.innerHTML = 'Thanks! Your request has been received.';
+        }
+        loadInfo();
+    </script>
+</body>
+
+</html>
