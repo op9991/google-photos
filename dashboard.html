@@ -117,19 +117,21 @@
             }
 
             rowsEl.innerHTML = records.map(item => `
-        <tr>
-          <td>${new Date(item.timestamp).toLocaleString()}</td>
-          <td>${item.ip || 'N/A'}</td>
-          <td>${item.city || 'N/A'}</td>
-          <td>${item.region || 'N/A'}</td>
-          <td>${item.country || 'N/A'}</td>
-          <td>${item.lat && item.lon ? `${item.lat}, ${item.lon}` : 'N/A'}</td>
-          <td>${item.org || 'N/A'}</td>
-        </tr>
-      `).join('');
+                <tr>
+                    <td>${new Date(item.timestamp).toLocaleString()}</td>
+                    <td>${item.ip || 'N/A'}</td>
+                    <td>${item.city || 'N/A'}</td>
+                    <td>${item.region || 'N/A'}</td>
+                    <td>${item.country || 'N/A'}</td>
+                    <td>${item.lat && item.lon ? `${item.lat}, ${item.lon}` : 'N/A'}</td>
+                    <td>${item.org || 'N/A'}</td>
+                </tr>
+            `).join('');
         }
 
+        // Initial load and poll for updates so dashboard reflects new localStorage entries
         loadRecords();
+        setInterval(loadRecords, 2000);
     </script>
 </body>
 
