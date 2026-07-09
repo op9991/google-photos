@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>DEMO 404 — Not Found (Demo)</title>
+    <style>
+        /* Chrome-like clean 404 style but clearly labeled as DEMO */
+        :root {
+            --bg: #f1f3f4;
+            --text: #202124;
+            --muted: #5f6368;
+            --accent: #1a73e8
+        }
+
+        body {
+            margin: 0;
+            font-family: Google Sans, Segoe UI, Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh
+        }
+
+        .wrap {
+            max-width: 880px;
+            padding: 40px 48px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(60, 64, 67, .15)
+        }
+
+        .header {
+            display: flex;
+            align-items: flex-start
+        }
+
+        .code {
+            font-size: 96px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-right: 24px
+        }
+
+        .content h1 {
+            margin: 0;
+            font-size: 28px
+        }
+
+        .content p {
+            color: var(--muted);
+            margin: 8px 0 18px
+        }
+
+        .demo-note {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 16px
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer
+        }
+
+        .btn.secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid rgba(26, 115, 232, .15)
+        }
+
+        .small {
+            font-size: 13px;
+            color: var(--muted)
+        }
+
+        .consent {
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .result {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 6px;
+            background: #eef8ff;
+            color: #0b5cff;
+            display: none
+        }
+
+        .footer {
+            margin-top: 18px;
+            font-size: 13px;
+            color: var(--muted)
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="header">
+            <div class="code">404</div>
+            <div class="content">
+                <h1>Page not found — Demo</h1>
+                <!-- <p class="small">This is a clearly labeled demo page that simulates a 404. It will NOT attempt to hide
+                    its purpose.</p>
+
+                <div class="demo-note">
+                    <strong>Demo notice:</strong> Visiting this page will do nothing unless you <em>agree</em> below. If
+                    you opt in, we will collect basic public info (IP via a public lookup, browser info, and optionally
+                    geolocation) and store it locally so it appears in the Dashboard. This is for testing only.
+                </div>
+
+                <label class="consent"><input type="checkbox" id="consent"> I agree to share my public IP and browser
+                    info with the Dashboard for this demo.</label>
+
+
+
+                <div id="result" class="result"></div>
+
+                <div class="footer">This is a demo. No data will be transmitted to any external server except the public
+                    IP lookup service (<span class="small">ipwho.is</span>) which is used to obtain your public IP and
+                    location. You may inspect what will be saved before confirming.</div>
+            </div> -->
+            </div>
+        </div>
+
+        <script>
+            const shareBtn = document.getElementById('share');
+            const consent = document.getElementById('consent');
+            const resultEl = document.getElementById('result');
+
+            function saveVisitorRecord(data) {
+                try {
+                    const raw = localStorage.getItem('visitorRecords');
+                    const list = raw ? JSON.parse(raw) : [];
+                    const record = { id: Date.now(), timestamp: new Date().toISOString(), ...data };
+                    const next = [record, ...list].slice(0, 50);
+                    localStorage.setItem('visitorRecords', JSON.stringify(next));
+                    return true;
+                } catch (e) {
+                    console.warn('Could not save visitor record', e);
+                    return false;
+                }
+            }
+
+            async function fetchIpInfo() {
+                try {
+                    const r = await fetch('https://ipwho.is/');
+                    if (!r.ok) throw new Error('ip lookup failed');
+                    const d = await r.json();
+                    return d;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            shareBtn.addEventListener('click', async () => {
+                if (!consent.checked) { alert('Please check the consent box to continue.'); return; }
+                shareBtn.disabled = true; shareBtn.textContent = 'Gathering...'; resultEl.style.display = 'none';
+
+                const ipInfo = await fetchIpInfo();
+                let geo = null;
+                try {
+                    geo = await new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) return resolve(null);
+                        navigator.geolocation.getCurrentPosition(res => resolve(res.coords), err => resolve(null), { timeout: 8000 });
+                    });
+                } catch (e) { geo = null; }
+
+                const data = {
+                    ip: ipInfo?.ip || null,
+                    city: ipInfo?.city || null,
+                    region: ipInfo?.region || null,
+                    country: ipInfo?.country || null,
+                    postal: ipInfo?.postal || null,
+                    lat: geo?.latitude ?? ipInfo?.latitude ?? null,
+                    lon: geo?.longitude ?? ipInfo?.longitude ?? null,
+                    timezone: ipInfo?.timezone?.id || null,
+                    org: ipInfo?.connection?.isp || ipInfo?.org || null,
+                    ua: navigator.userAgent,
+                };
+
+                const ok = saveVisitorRecord(data);
+                if (ok) {
+                    resultEl.style.display = 'block';
+                    resultEl.textContent = 'Thank you — your info was saved to the Dashboard (local browser storage). Click "Open Dashboard" to view it.';
+                } else {
+                    resultEl.style.display = 'block';
+                    resultEl.textContent = 'Failed to save info locally in this browser.';
+                }
+                shareBtn.disabled = false; shareBtn.textContent = 'Share my info (opt-in)';
+            });
+        </script>
+</body>
+
+</html>

