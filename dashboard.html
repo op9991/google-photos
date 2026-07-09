@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | Visitor Network Info</title>
-    <script src="https://js.puter.com/v2/"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -184,36 +183,11 @@
             }).join('');
         }
 
-        async function loadAllRecords() {
-            // 1. Start with localStorage records (same-browser visitors)
-            var localRaw = localStorage.getItem('visitorRecords');
-            var localRecords = localRaw ? JSON.parse(localRaw) : [];
-            var merged = {};
-            localRecords.forEach(function(r) { merged[r.id] = r; });
-
-            // 2. Pull from Puter KV — captures records from ALL devices (phones, PCs, tablets)
-            if (window.puter) {
-                try {
-                    var keys = await puter.kv.list('photos_visitor_*');
-                    if (keys && keys.length > 0) {
-                        await Promise.all(keys.map(async function(key) {
-                            try {
-                                var val = await puter.kv.get(key);
-                                if (val) {
-                                    var rec = JSON.parse(val);
-                                    merged[rec.id] = rec; // Puter version wins (more up-to-date)
-                                }
-                            } catch(e) { /* skip corrupt records */ }
-                        }));
-                    }
-                } catch(e) {
-                    console.warn('Puter KV error:', e);
-                }
-            }
-
-            // 3. Sort newest first and render
-            var allRecords = Object.values(merged).sort(function(a, b) { return b.id - a.id; });
-            renderRecords(allRecords);
+        function loadAllRecords() {
+            var raw = localStorage.getItem('visitorRecords');
+            var records = raw ? JSON.parse(raw) : [];
+            records.sort(function(a, b) { return b.id - a.id; });
+            renderRecords(records);
         }
 
         // Load on start and poll every 3 seconds
